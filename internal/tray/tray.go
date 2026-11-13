@@ -48,7 +48,7 @@ var MenuLabels = struct {
 	Show:     "显示窗口",
 	Refresh:  "立即刷新",
 	Settings: "打开设置",
-	Quit:     "退出",
+	Quit:     "退出程序",
 }
 
 // Start launches the tray with an external loop suitable for Wails OnStartup.
@@ -76,7 +76,7 @@ func onReady(h Hooks) {
 	mRefresh := systray.AddMenuItem(MenuLabels.Refresh, "立即检测并更新 hosts")
 	mSettings := systray.AddMenuItem(MenuLabels.Settings, "打开设置窗口")
 	systray.AddSeparator()
-	mQuit := systray.AddMenuItem(MenuLabels.Quit, "退出程序")
+	mQuit := systray.AddMenuItem(MenuLabels.Quit, "结束程序（不只是隐藏到托盘）")
 
 	showWindow := func() {
 		if h.OnShowSettings != nil {
@@ -96,10 +96,10 @@ func onReady(h Hooks) {
 		showWindow()
 	})
 	mQuit.Click(func() {
+		// OnQuit must tear down tray + Wails; do not only systray.Quit (process would linger).
 		if h.OnQuit != nil {
-			h.OnQuit()
+			go h.OnQuit()
 		}
-		systray.Quit()
 	})
 
 	wireClicks(showWindow)

@@ -10,6 +10,7 @@ import (
 	"GoogleTranslate_refreshes_daily/internal/state"
 	"GoogleTranslate_refreshes_daily/internal/tray"
 	"GoogleTranslate_refreshes_daily/internal/updater"
+	"GoogleTranslate_refreshes_daily/internal/winsize"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -22,6 +23,7 @@ type App struct {
 	cfg              state.Config
 	st               state.State
 	busy             bool
+	quitting         bool // when true, beforeClose allows real process exit
 	cancel           context.CancelFunc
 	trayIcon         []byte
 	trayTemplateIcon []byte
@@ -34,6 +36,8 @@ func NewApp() *App {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	a.applyScreenAwareWindowSize()
+
 	cfg, _ := state.LoadConfig()
 	st, _ := state.LoadState()
 	a.mu.Lock()
@@ -52,7 +56,7 @@ func (a *App) startup(ctx context.Context) {
 			a.showMainWindow()
 		},
 		OnQuit: func() {
-			wailsruntime.Quit(a.ctx)
+			a.requestQuit()
 		},
 		StatusProvider: func() string {
 			s := a.GetStatus()
@@ -75,9 +79,41 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) beforeClose(ctx context.Context) (prevent bool) {
-	// Hide to tray instead of quitting when user closes the window.
+	a.mu.Lock()
+	quitting := a.quitting
+	a.mu.Unlock()
+	if quitting {
+		// Tray 「退出程序」 (or Quit API): allow Wails to tear down and end the process.
+		return false
+	}
+	// Close button: hide to tray instead of quitting.
 	wailsruntime.WindowHide(ctx)
 	return true
+}
+
+// requestQuit tears down tray + in-flight work and exits the Wails process.
+func (a *App) requestQuit() {
+	a.mu.Lock()
+	if a.quitting {
+		a.mu.Unlock()
+		return
+	}
+	a.quitting = true
+	cancel := a.cancel
+	stop := a.trayStop
+	a.trayStop = nil
+	ctx := a.ctx
+	a.mu.Unlock()
+
+	if cancel != nil {
+		cancel()
+	}
+	if stop != nil {
+		stop()
+	}
+	if ctx != nil {
+		wailsruntime.Quit(ctx)
+	}
 }
 
 func (a *App) showMainWindow() {
@@ -89,6 +125,35 @@ func (a *App) showMainWindow() {
 	// Bring to foreground after hide-to-tray on Windows.
 	wailsruntime.WindowSetAlwaysOnTop(a.ctx, true)
 	wailsruntime.WindowSetAlwaysOnTop(a.ctx, false)
+}
+
+// applyScreenAwareWindowSize sizes the window from the current/primary screen
+// logical work area (DPI-aware via Wails Screen.Size) with min clamps; user may still resize.
+func (a *App) applyScreenAwareWindowSize() {
+	if a.ctx == nil {
+		return
+	}
+	sz := winsize.Fallback()
+	if screens, err := wailsruntime.ScreenGetAll(a.ctx); err == nil && len(screens) > 0 {
+		chosen := screens[0]
+		for _, s := range screens {
+			if s.IsCurrent {
+				chosen = s
+				break
+			}
+			if s.IsPrimary {
+				chosen = s
+			}
+		}
+		sw, sh := chosen.Size.Width, chosen.Size.Height
+		if sw <= 0 || sh <= 0 {
+			sw, sh = chosen.Width, chosen.Height
+		}
+		sz = winsize.Fit(sw, sh)
+	}
+	wailsruntime.WindowSetMinSize(a.ctx, sz.MinWidth, sz.MinHeight)
+	wailsruntime.WindowSetSize(a.ctx, sz.Width, sz.Height)
+	wailsruntime.WindowCenter(a.ctx)
 }
 
 func (a *App) pushTrayStatus() {
@@ -262,18 +327,10 @@ func (a *App) TrayMenuLabels() map[string]string {
 		"refresh":  tray.MenuLabels.Refresh,
 		"settings": tray.MenuLabels.Settings,
 		"quit":     tray.MenuLabels.Quit,
-		"note":     "系统托盘：左键显示窗口，右键打开菜单（状态/刷新/设置/退出）。关闭窗口会隐藏到托盘。",
+		"note":     "系统托盘：左键显示窗口，右键打开菜单。关闭窗口隐藏到托盘；「退出程序」会结束进程。",
 	}
 }
 
 func (a *App) Quit() {
-	if a.cancel != nil {
-		a.cancel()
-	}
-	if a.trayStop != nil {
-		a.trayStop()
-	}
-	if a.ctx != nil {
-		wailsruntime.Quit(a.ctx)
-	}
+	a.requestQuit()
 }

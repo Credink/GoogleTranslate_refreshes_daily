@@ -24,12 +24,14 @@ func main() {
 	app.trayIcon = trayIcon
 	app.trayTemplateIcon = trayTemplateIcon
 
+	// Initial geometry is a content-fit fallback; OnStartup re-sizes from the
+	// primary/current screen logical work area (DPI-aware) via winsize.Fit.
 	opts := &options.App{
 		Title:     "谷歌翻译 Hosts 更新器",
-		Width:     560,
-		Height:    900,
-		MinWidth:  480,
-		MinHeight: 780,
+		Width:     540,
+		Height:    820,
+		MinWidth:  420,
+		MinHeight: 560,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
