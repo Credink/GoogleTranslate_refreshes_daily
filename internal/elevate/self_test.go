@@ -40,6 +40,20 @@ func TestSelfExecutablePrefersAPPIMAGE(t *testing.T) {
 	}
 }
 
+func TestSelfExecutableIgnoresPoisonedAPPIMAGE(t *testing.T) {
+	t.Setenv("APPIMAGE", filepath.Join(t.TempDir(), "evil-binary"))
+	got, err := SelfExecutable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if looksLikeAppImageFile(got) && filepath.Base(got) == "evil-binary" {
+		t.Fatalf("poisoned APPIMAGE used: %q", got)
+	}
+	if filepath.Base(got) == "evil-binary" {
+		t.Fatalf("poisoned APPIMAGE used: %q", got)
+	}
+}
+
 func TestBuildPkexecArgv(t *testing.T) {
 	t.Setenv("DISPLAY", ":0")
 	t.Setenv("XAUTHORITY", "/home/u/.Xauthority")

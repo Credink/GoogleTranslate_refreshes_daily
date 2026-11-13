@@ -28,3 +28,20 @@ func TestCurrentIPFor(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 }
+
+func TestApplyRejectsHostsInjection(t *testing.T) {
+	_, err := Apply("127.0.0.1 localhost\n", Mapping{
+		IP:      "8.8.8.8",
+		Domains: []string{"translate.googleapis.com\n1.2.3.4 evil.example"},
+	})
+	if err == nil {
+		t.Fatal("expected domain injection to fail")
+	}
+	_, err = Apply("127.0.0.1 localhost\n", Mapping{
+		IP:      "8.8.8.8\n9.9.9.9",
+		Domains: DefaultDomains,
+	})
+	if err == nil {
+		t.Fatal("expected IP injection to fail")
+	}
+}

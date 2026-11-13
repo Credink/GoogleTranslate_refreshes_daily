@@ -94,9 +94,17 @@ func Apply(content string, m Mapping) (string, error) {
 	if m.IP == "" {
 		return "", fmt.Errorf("empty IP")
 	}
+	if err := validateHostsToken(m.IP, "IP"); err != nil {
+		return "", err
+	}
 	domains := m.Domains
 	if len(domains) == 0 {
 		domains = DefaultDomains
+	}
+	for _, d := range domains {
+		if err := validateHostsToken(d, "domain"); err != nil {
+			return "", err
+		}
 	}
 
 	lines := splitLines(content)
@@ -151,6 +159,20 @@ func Read(path string) (string, error) {
 		return "", err
 	}
 	return string(b), nil
+}
+
+// validateHostsToken rejects whitespace/control so a poisoned domain cannot
+// inject extra hosts lines via newline or tab in the managed block.
+func validateHostsToken(s, kind string) error {
+	if s == "" {
+		return fmt.Errorf("empty %s", kind)
+	}
+	for _, r := range s {
+		if r <= ' ' || r == 0x7f {
+			return fmt.Errorf("invalid %s %q", kind, s)
+		}
+	}
+	return nil
 }
 
 func splitLines(s string) []string {

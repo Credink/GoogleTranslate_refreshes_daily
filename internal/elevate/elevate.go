@@ -71,16 +71,10 @@ func ApplyElevated(patchFile string) error {
 }
 
 // elevateLinux prefers pkexec (polkit GUI), then graphical sudo helpers, then sudo.
-// For AppImage, re-exec $APPIMAGE (not the FUSE-mounted binary) so root can read it.
+// exe should already be SelfExecutable() (prefers a validated $APPIMAGE path).
 func elevateLinux(exe string, args ...string) error {
 	target := exe
-	if ai := strings.TrimSpace(os.Getenv("APPIMAGE")); ai != "" {
-		if abs, err := filepath.Abs(ai); err == nil {
-			target = abs
-		} else {
-			target = ai
-		}
-	} else if looksLikeAppImageMount(exe) {
+	if looksLikeAppImageMount(exe) {
 		return fmt.Errorf("%w: 当前可执行文件在 AppImage FUSE 挂载内，root/pkexec 无法读取；请直接运行磁盘上的 .AppImage（保留 APPIMAGE 环境变量）; %s",
 			ErrNeedElevation, Hint())
 	}
@@ -143,7 +137,7 @@ func buildPkexecArgv(envPath, target string, args ...string) []string {
 			out = append(out, key+"="+v)
 		}
 	}
-	if ai := strings.TrimSpace(os.Getenv("APPIMAGE")); ai != "" {
+	if ai := strings.TrimSpace(os.Getenv("APPIMAGE")); ai != "" && looksLikeAppImageFile(ai) {
 		out = append(out, "APPIMAGE="+ai)
 		for _, key := range []string{"APPDIR", "OWD", "ARGV0"} {
 			if v := os.Getenv(key); v != "" {
