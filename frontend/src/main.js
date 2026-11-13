@@ -63,7 +63,7 @@ app.innerHTML = `
       </label>
       <label class="check" id="autostartRow">
         <input id="launchAtLogin" type="checkbox" />
-        <span>开机自启动（登录时启动；Windows 写入当前用户 Run 项）</span>
+        <span>开机自启动（登录时启动：Windows Run / macOS LaunchAgent / Linux XDG Autostart）</span>
       </label>
 
       <div class="domains-block">

@@ -1,0 +1,150 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish (e.g. v0.1.2). Leave empty to only build artifacts."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+env:
+  VERSION: "0.1.2"
+  GO_VERSION: "1.26.x"
+  NODE_VERSION: "20"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install Wails
+        shell: bash
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.1
+      - name: Package Windows
+        shell: pwsh
+        run: |
+          $env:Path = "$(go env GOPATH)\bin;" + $env:Path
+          powershell -ExecutionPolicy Bypass -File .\scripts\package-windows.ps1
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-amd64
+          path: |
+            build/dist/*-windows-amd64-*-portable.zip
+            build/dist/*installer*.exe
+          if-no-files-found: error
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install Linux GUI deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            pkg-config \
+            build-essential
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.1
+      - name: Package Linux
+        run: |
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          export VERSION="${{ env.VERSION }}"
+          bash scripts/package-linux.sh
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-amd64
+          path: build/dist/*-linux-amd64-*.tar.gz
+          if-no-files-found: error
+
+  build-darwin:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.1
+      - name: Package macOS arm64
+        run: |
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          export VERSION="${{ env.VERSION }}"
+          bash scripts/package-darwin.sh
+      - name: Upload Darwin artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: darwin-arm64
+          path: build/dist/*-darwin-arm64-*.zip
+          if-no-files-found: error
+
+  publish:
+    needs: [build-windows, build-linux, build-darwin]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.tag != '')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.tag }}" ]]; then
+            echo "name=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+      - name: Flatten assets
+        run: |
+          mkdir -p dist
+          find release-assets -type f \( -name '*.zip' -o -name '*.tar.gz' -o -name '*installer*.exe' \) -print -exec cp -n {} dist/ \;
+          ls -la dist
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ env.VERSION }}
+        run: |
+          TAG="${{ steps.tag.outputs.name }}"
+          NOTES="## 谷歌翻译 Hosts 更新器 ${TAG}
+
+          - **Windows amd64**：便携 zip（\`*-portable.zip\`）；若有 NSIS 则附带 installer
+          - **Linux amd64**：\`*-linux-amd64-*.tar.gz\`（需桌面 + WebKitGTK）
+          - **macOS arm64**：\`*-darwin-arm64-*.zip\`（Apple Silicon；未公证，首次需手动允许）
+
+          使用说明见仓库 \`docs/user-flow.md\` / README。"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" dist/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "${TAG} — Google Translate Hosts Updater" \
+              --notes "$NOTES"
+          fi

@@ -37,15 +37,31 @@ func relaunchElevated(exe, args string) error {
 			fields := splitArgs(args)
 			argv = append(argv, fields...)
 		}
-		cmd := exec.Command("pkexec", argv...)
+		return startElevatedLinux(argv...)
+	}
+}
+
+func startElevatedLinux(argv ...string) error {
+	tryStart := func(name string, full []string) error {
+		if _, err := exec.LookPath(name); err != nil {
+			return err
+		}
+		cmd := exec.Command(name, full...)
 		cmd.Stdout = nil
 		cmd.Stderr = nil
 		cmd.Stdin = nil
-		if err := cmd.Start(); err != nil {
-			return fmt.Errorf("%w: %v; %s", ErrNeedElevation, err, Hint())
-		}
+		return cmd.Start()
+	}
+	// pkexec argv0 is the target program.
+	if err := tryStart("pkexec", argv); err == nil {
 		return nil
 	}
+	for _, helper := range []string{"lxqt-sudo", "gksudo", "kdesudo", "sudo"} {
+		if err := tryStart(helper, argv); err == nil {
+			return nil
+		}
+	}
+	return fmt.Errorf("%w: no pkexec/sudo helper; %s", ErrNeedElevation, Hint())
 }
 
 func splitArgs(s string) []string {

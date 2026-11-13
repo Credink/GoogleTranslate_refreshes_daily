@@ -13,6 +13,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/linux"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
@@ -107,6 +108,9 @@ func main() {
 				Title:   "谷歌翻译 Hosts 更新器",
 				Message: "Hosts 可用性检测与自动更新",
 			},
+		},
+		Linux: &linux.Options{
+			WindowIsTranslucent: false,
 		},
 	}
 

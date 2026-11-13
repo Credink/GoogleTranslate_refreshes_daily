@@ -61,13 +61,30 @@ func ApplyElevated(patchFile string) error {
 		}
 		return nil
 	default:
-		cmd := exec.Command("pkexec", exe, "--apply-hosts", patchFile)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("%w: %v (%s); %s", ErrNeedElevation, err, string(out), Hint())
-		}
-		return nil
+		return elevateLinux(exe, "--apply-hosts", patchFile)
 	}
+}
+
+// elevateLinux prefers pkexec (polkit GUI), then graphical sudo helpers, then sudo.
+func elevateLinux(exe string, args ...string) error {
+	helpers := []string{"pkexec", "lxqt-sudo", "gksudo", "kdesudo", "sudo"}
+	var errs []string
+	for _, name := range helpers {
+		if _, err := exec.LookPath(name); err != nil {
+			continue
+		}
+		argv := append([]string{exe}, args...)
+		cmd := exec.Command(name, argv...)
+		out, err := cmd.CombinedOutput()
+		if err == nil {
+			return nil
+		}
+		errs = append(errs, fmt.Sprintf("%s: %v (%s)", name, err, string(out)))
+	}
+	if len(errs) == 0 {
+		return fmt.Errorf("%w: no pkexec/sudo found; %s", ErrNeedElevation, Hint())
+	}
+	return fmt.Errorf("%w: %s; %s", ErrNeedElevation, strings.Join(errs, "; "), Hint())
 }
 
 func shellQuote(s string) string {

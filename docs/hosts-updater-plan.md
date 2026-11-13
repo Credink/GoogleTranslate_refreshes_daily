@@ -9,8 +9,8 @@
 3. **IPv6：** 默认关；开启后每次检查先确认本机 IPv6 可用，否则本轮回退 IPv4；双栈都可用时**优先 IPv4**
 4. **许可：** **Apache-2.0**（NOTICE 致谢 IPFinder 思路，不引入 GPL 源码）
 5. **Windows 安装包：** `wails build -nsis`（可选「开机自启动」组件）+ `scripts/package-windows.ps1` 产出便携 zip
-6. **Windows 开机自启：** HKCU Run 值 `GoogleTranslateHostsUpdater`；设置页 `launch_at_login`；卸载时清除
-7. **macOS 托盘：** 仅做 build-tag / 模板图标 / 代码路径对齐；**无 Mac 硬件时不做完整 GUI 托盘验收**（见 `build/darwin/README.md`）
+6. **开机自启：** Windows HKCU Run；macOS LaunchAgent；Linux XDG `~/.config/autostart/*.desktop`；设置页 `launch_at_login`
+7. **macOS / Linux GUI：** 代码路径已齐；完整托盘验收需真机。Release 由 CI（`macos-14` / `ubuntu-latest`）构建（见 `build/darwin/README.md`、`build/linux/README.md`、`.github/workflows/release.yml`）
 8. **双权限模式：** 默认普通用户（按次 `--apply-hosts` 提权）；可选 `run_as_admin` 长期提权静默写 hosts。开启/关闭会尝试 relaunch；Windows 完整实现，macOS/Linux best-effort（降权常需手动）
 9. **代理插件 bypass（best-effort，幂等）：** 写入 hosts 后 / 首次检查 / GUI「配置代理插件绕过」会扫描 Chrome/Edge 的 ZeroOmega、SwitchyOmega LevelDB。**先检查是否已在 bypass/DIRECT**；已正确则跳过写入。仅缺失或 `ranslate` 等笔误时才修补。同域名集且上次已 OK 时自动流程不再重复改写。**不声称覆盖全部代理扩展**。详见 README「Hosts ≠ 代理路径」。
 
@@ -30,9 +30,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\package-windows.ps1
 - 安装包：勾选「开机自启动（当前用户）」即可写入登录启动项
 - 已安装后：打开设置 → 勾选「开机自启动」→ 保存
 
-## macOS 限制
+## macOS / Linux 构建
 
-本环境无 Mac：darwin 托盘用 `SetTemplateIcon` + 短标题结构化；全量 `wails`/托盘 GUI 验证留待真机。
+本环境无 Mac/Linux GUI 交叉能力：darwin/linux 托盘与自启代码路径已实现；全量 Wails GUI 由 CI 打 Release 包，真机验收留待硬件。端到端说明见 `docs/user-flow.md`。
 
 ## 权限模式（GUI）
 
@@ -42,4 +42,4 @@ powershell -ExecutionPolicy Bypass -File .\scripts\package-windows.ps1
 
 ## 后续
 
-CIDR 深扫 UI、macOS 真机托盘验收与公证/DMG、Linux 托盘打磨；更多代理扩展的手动配置文档（仍不承诺自动覆盖）。
+CIDR 深扫 UI、macOS 公证/DMG、Linux 发行版托盘宿主差异打磨；更多代理扩展的手动配置文档（仍不承诺自动覆盖）。
