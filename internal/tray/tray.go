@@ -40,10 +40,12 @@ func StatusLine(lastMessage string, lastCheck string) string {
 
 // MenuLabels are Chinese tray menu entries.
 var MenuLabels = struct {
+	Show     string
 	Refresh  string
 	Settings string
 	Quit     string
 }{
+	Show:     "显示窗口",
 	Refresh:  "立即刷新",
 	Settings: "打开设置",
 	Quit:     "退出",
@@ -66,23 +68,32 @@ func onReady(h Hooks) {
 	systray.SetTitle(platformTitle())
 	systray.SetTooltip("谷歌翻译 Hosts 更新器")
 
-	statusItem = systray.AddMenuItem("上次: 尚未检查", "最近一次检查结果")
+	// Build menu before wiring clicks so ShowMenu always has items.
+	statusItem = systray.AddMenuItem("上次: 尚未检查", "最近一次检查结果与时间")
 	statusItem.Disable()
 	systray.AddSeparator()
+	mShow := systray.AddMenuItem(MenuLabels.Show, "显示或还原主窗口")
 	mRefresh := systray.AddMenuItem(MenuLabels.Refresh, "立即检测并更新 hosts")
 	mSettings := systray.AddMenuItem(MenuLabels.Settings, "打开设置窗口")
 	systray.AddSeparator()
 	mQuit := systray.AddMenuItem(MenuLabels.Quit, "退出程序")
 
+	showWindow := func() {
+		if h.OnShowSettings != nil {
+			h.OnShowSettings()
+		}
+	}
+
+	mShow.Click(func() {
+		showWindow()
+	})
 	mRefresh.Click(func() {
 		if h.OnRefresh != nil {
 			go h.OnRefresh()
 		}
 	})
 	mSettings.Click(func() {
-		if h.OnShowSettings != nil {
-			h.OnShowSettings()
-		}
+		showWindow()
 	})
 	mQuit.Click(func() {
 		if h.OnQuit != nil {
@@ -91,7 +102,7 @@ func onReady(h Hooks) {
 		systray.Quit()
 	})
 
-	wireClicks()
+	wireClicks(showWindow)
 
 	if h.StatusProvider != nil {
 		go func() {

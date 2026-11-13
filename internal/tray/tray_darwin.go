@@ -25,12 +25,17 @@ func applyIcon(h Hooks) {
 	}
 }
 
-func wireClicks() {
-	// macOS: left/right click both surface the menu (menu-bar UX).
+func wireClicks(onLeftClick func()) {
+	// macOS menu-bar: click surfaces the menu; "显示窗口" item still restores UI.
+	_ = onLeftClick
 	systray.SetOnClick(func(menu systray.IMenu) {
-		_ = menu.ShowMenu()
+		if menu != nil {
+			_ = menu.ShowMenu()
+		}
 	})
 	systray.SetOnRClick(func(menu systray.IMenu) {
-		_ = menu.ShowMenu()
+		if menu != nil {
+			_ = menu.ShowMenu()
+		}
 	})
 }

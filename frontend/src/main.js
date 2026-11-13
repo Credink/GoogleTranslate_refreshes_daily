@@ -108,7 +108,7 @@ async function reload() {
     fillStatus(status);
     fillSettings(settings);
     document.getElementById('trayHint').textContent =
-        `托盘：${tray.refresh} / ${tray.settings} / ${tray.quit}。${tray.note || ''}`;
+        `托盘：${tray.show || '显示窗口'} / ${tray.refresh} / ${tray.settings} / ${tray.quit}。${tray.note || ''}`;
 }
 
 document.getElementById('btnReload').addEventListener('click', () => {
@@ -136,9 +136,9 @@ document.getElementById('btnSave').addEventListener('click', async () => {
         allow_online_on_failure: document.getElementById('allowOnline').checked,
         include_ipv6: document.getElementById('includeIPv6').checked,
         launch_at_login: document.getElementById('launchAtLogin').checked,
-        workers: 64,
-        timeout_ms: 1500,
-        repeat: 3,
+        workers: 32,
+        timeout_ms: 800,
+        repeat: 2,
         domains: ['translate.googleapis.com', 'translate-pa.googleapis.com'],
     };
     const msg = await SaveSettings(payload);

@@ -25,9 +25,11 @@ func main() {
 	app.trayTemplateIcon = trayTemplateIcon
 
 	opts := &options.App{
-		Title:  "谷歌翻译 Hosts 更新器",
-		Width:  520,
-		Height: 680,
+		Title:     "谷歌翻译 Hosts 更新器",
+		Width:     560,
+		Height:    900,
+		MinWidth:  480,
+		MinHeight: 780,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

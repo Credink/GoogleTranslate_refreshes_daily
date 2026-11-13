@@ -15,10 +15,11 @@ import (
 const (
 	DefaultHost     = "translate.googleapis.com"
 	DefaultTemplate = "https://%s/translate_a/element.js"
-	DefaultTimeout  = 1500 * time.Millisecond
-	DefaultRepeat   = 3
-	DefaultWorkers  = 64
-	RepeatGap       = time.Second
+	DefaultTimeout  = 800 * time.Millisecond
+	DefaultRepeat   = 2
+	DefaultWorkers  = 32
+	// RepeatGap between stable re-probes; keep short so daily single-IP checks stay snappy.
+	RepeatGap = 250 * time.Millisecond
 )
 
 // Result is a successful probe of one IP.
@@ -34,6 +35,10 @@ type Config struct {
 	Timeout  time.Duration
 	Repeat   int
 	Workers  int
+	// StopAfterSuccess cancels the pool scan after N successes (0 = probe entire pool).
+	StopAfterSuccess int
+	// PriorityKeep leaves the first N IPs unshuffled (e.g. last-known-good).
+	PriorityKeep int
 }
 
 func (c Config) withDefaults() Config {
@@ -51,6 +56,9 @@ func (c Config) withDefaults() Config {
 	}
 	if c.Workers <= 0 {
 		c.Workers = DefaultWorkers
+	}
+	if c.Workers > 64 {
+		c.Workers = 64
 	}
 	return c
 }

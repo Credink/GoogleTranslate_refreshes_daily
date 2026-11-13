@@ -14,80 +14,82 @@ type SpeedtestResult struct {
 	Failed    int
 }
 
-// Speedtest probes all IPs concurrently (IPFinder-style warm-start worker pool).
-// Each IP must pass Repeat successful probes; order of ips is shuffled.
+// Speedtest probes IPs concurrently with a bounded worker pool.
+// The first PriorityKeep addresses stay at the front (unshuffled); the rest are shuffled.
+// When StopAfterSuccess > 0, scanning cancels after that many successes (early-exit).
 func Speedtest(ctx context.Context, cfg Config, ips []string) (SpeedtestResult, error) {
 	cfg = cfg.withDefaults()
 	if len(ips) == 0 {
 		return SpeedtestResult{}, nil
 	}
 
-	shuffled := append([]string(nil), ips...)
-	rand.Shuffle(len(shuffled), func(i, j int) {
-		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
-	})
+	ordered := orderCandidates(ips, cfg.PriorityKeep)
 
-	sem := make(chan struct{}, cfg.Workers)
+	runCtx := ctx
+	var cancel context.CancelFunc
+	if cfg.StopAfterSuccess > 0 {
+		runCtx, cancel = context.WithCancel(ctx)
+		defer cancel()
+	}
+
+	jobs := make(chan string)
 	var (
-		mu   sync.Mutex
-		out  SpeedtestResult
-		wg   sync.WaitGroup
-		errC = make(chan error, 1)
+		mu  sync.Mutex
+		out SpeedtestResult
+		wg  sync.WaitGroup
 	)
 
-	warmupDelay := 2 * cfg.Timeout / time.Duration(cfg.Workers)
-	if warmupDelay < time.Millisecond {
-		warmupDelay = time.Millisecond
+	workerCount := cfg.Workers
+	if workerCount > len(ordered) {
+		workerCount = len(ordered)
+	}
+	if workerCount < 1 {
+		workerCount = 1
 	}
 
-	for i, ip := range shuffled {
-		if ctx.Err() != nil {
-			break
-		}
-		wg.Add(1)
-		go func(ip string) {
-			defer wg.Done()
-			select {
-			case sem <- struct{}{}:
-			case <-ctx.Done():
+	worker := func() {
+		defer wg.Done()
+		for ip := range jobs {
+			if runCtx.Err() != nil {
 				return
 			}
-			defer func() { <-sem }()
-
-			lat, err := TestIPStable(ctx, cfg, ip)
+			lat, err := TestIPStable(runCtx, cfg, ip)
 			mu.Lock()
-			defer mu.Unlock()
 			if err != nil {
 				out.Failed++
-				return
+				mu.Unlock()
+				continue
 			}
 			out.Available = append(out.Available, Result{IP: ip, Latency: lat})
-		}(ip)
-
-		if i < cfg.Workers {
-			select {
-			case <-ctx.Done():
-			case <-time.After(warmupDelay):
+			n := len(out.Available)
+			mu.Unlock()
+			if cancel != nil && cfg.StopAfterSuccess > 0 && n >= cfg.StopAfterSuccess {
+				cancel()
+				return
 			}
 		}
 	}
 
-	done := make(chan struct{})
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
+	wg.Add(workerCount)
+	for i := 0; i < workerCount; i++ {
+		go worker()
+	}
 
-	select {
-	case <-done:
-	case <-ctx.Done():
-		<-done
-		return out, ctx.Err()
-	case err := <-errC:
+sendLoop:
+	for _, ip := range ordered {
+		select {
+		case <-runCtx.Done():
+			break sendLoop
+		case jobs <- ip:
+		}
+	}
+	close(jobs)
+	wg.Wait()
+
+	if err := ctx.Err(); err != nil && len(out.Available) == 0 {
 		return out, err
 	}
 
-	// Sort ascending by latency
 	avail := out.Available
 	for i := 0; i < len(avail); i++ {
 		for j := i + 1; j < len(avail); j++ {
@@ -98,6 +100,21 @@ func Speedtest(ctx context.Context, cfg Config, ips []string) (SpeedtestResult, 
 	}
 	out.Available = avail
 	return out, nil
+}
+
+func orderCandidates(ips []string, priorityKeep int) []string {
+	out := append([]string(nil), ips...)
+	if priorityKeep < 0 {
+		priorityKeep = 0
+	}
+	if priorityKeep > len(out) {
+		priorityKeep = len(out)
+	}
+	rest := out[priorityKeep:]
+	rand.Shuffle(len(rest), func(i, j int) {
+		rest[i], rest[j] = rest[j], rest[i]
+	})
+	return out
 }
 
 // BestIP returns the lowest-latency available IP, or empty string.

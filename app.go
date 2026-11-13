@@ -49,8 +49,7 @@ func (a *App) startup(ctx context.Context) {
 			a.pushTrayStatus()
 		},
 		OnShowSettings: func() {
-			wailsruntime.WindowShow(a.ctx)
-			wailsruntime.WindowUnminimise(a.ctx)
+			a.showMainWindow()
 		},
 		OnQuit: func() {
 			wailsruntime.Quit(a.ctx)
@@ -79,6 +78,17 @@ func (a *App) beforeClose(ctx context.Context) (prevent bool) {
 	// Hide to tray instead of quitting when user closes the window.
 	wailsruntime.WindowHide(ctx)
 	return true
+}
+
+func (a *App) showMainWindow() {
+	if a.ctx == nil {
+		return
+	}
+	wailsruntime.WindowShow(a.ctx)
+	wailsruntime.WindowUnminimise(a.ctx)
+	// Bring to foreground after hide-to-tray on Windows.
+	wailsruntime.WindowSetAlwaysOnTop(a.ctx, true)
+	wailsruntime.WindowSetAlwaysOnTop(a.ctx, false)
 }
 
 func (a *App) pushTrayStatus() {
@@ -248,10 +258,11 @@ func (a *App) RefreshNow() StatusDTO {
 
 func (a *App) TrayMenuLabels() map[string]string {
 	return map[string]string{
+		"show":     tray.MenuLabels.Show,
 		"refresh":  tray.MenuLabels.Refresh,
 		"settings": tray.MenuLabels.Settings,
 		"quit":     tray.MenuLabels.Quit,
-		"note":     "系统托盘已启用：可查看上次状态并立即刷新。关闭窗口会隐藏到托盘。",
+		"note":     "系统托盘：左键显示窗口，右键打开菜单（状态/刷新/设置/退出）。关闭窗口会隐藏到托盘。",
 	}
 }
 

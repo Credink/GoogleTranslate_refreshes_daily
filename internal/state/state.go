@@ -36,9 +36,9 @@ func DefaultConfig() Config {
 		AllowOnlineOnFailure: true,
 		IncludeIPv6:          false,
 		LaunchAtLogin:        false,
-		Workers:              64,
-		TimeoutMS:            1500,
-		Repeat:               3,
+		Workers:              32,
+		TimeoutMS:            800,
+		Repeat:               2,
 		Domains: []string{
 			"translate.googleapis.com",
 			"translate-pa.googleapis.com",

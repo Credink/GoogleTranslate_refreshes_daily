@@ -14,11 +14,19 @@ func applyIcon(h Hooks) {
 	}
 }
 
-func wireClicks() {
+func wireClicks(onLeftClick func()) {
 	systray.SetOnClick(func(menu systray.IMenu) {
-		_ = menu.ShowMenu()
+		if onLeftClick != nil {
+			onLeftClick()
+			return
+		}
+		if menu != nil {
+			_ = menu.ShowMenu()
+		}
 	})
 	systray.SetOnRClick(func(menu systray.IMenu) {
-		_ = menu.ShowMenu()
+		if menu != nil {
+			_ = menu.ShowMenu()
+		}
 	})
 }

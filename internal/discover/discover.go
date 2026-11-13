@@ -30,11 +30,13 @@ type PoolOptions struct {
 	Online        bool
 	IncludeIPv6   bool
 	LastKnownGood string
-	URLGroups     [][]string
-	HTTPTimeout   time.Duration
+	// SkipSeed omits the embedded snapshot (used after a local-only pass already failed).
+	SkipSeed    bool
+	URLGroups   [][]string
+	HTTPTimeout time.Duration
 }
 
-// BuildPool returns unique candidate IPs. Seed is always included; online merge is optional.
+// BuildPool returns unique candidate IPs. Seed is included unless SkipSeed; online merge is optional.
 func BuildPool(ctx context.Context, opt PoolOptions) ([]string, error) {
 	seen := make(map[string]struct{})
 	var out []string
@@ -61,8 +63,10 @@ func BuildPool(ctx context.Context, opt PoolOptions) ([]string, error) {
 	if opt.LastKnownGood != "" {
 		add(opt.LastKnownGood)
 	}
-	for _, ip := range ipseed.IPs() {
-		add(ip)
+	if !opt.SkipSeed {
+		for _, ip := range ipseed.IPs() {
+			add(ip)
+		}
 	}
 
 	if opt.Online {

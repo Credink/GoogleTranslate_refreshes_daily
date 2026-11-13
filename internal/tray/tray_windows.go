@@ -14,11 +14,24 @@ func applyIcon(h Hooks) {
 	}
 }
 
-func wireClicks() {
+// wireClicks: Windows left-click restores the window; right-click opens the tray menu.
+func wireClicks(onLeftClick func()) {
 	systray.SetOnClick(func(menu systray.IMenu) {
-		_ = menu.ShowMenu()
+		_ = menu // menu available; left-click restores UI instead of popping the menu
+		if onLeftClick != nil {
+			onLeftClick()
+		}
 	})
+	systray.SetOnDClick(func(menu systray.IMenu) {
+		_ = menu
+		if onLeftClick != nil {
+			onLeftClick()
+		}
+	})
+	// Explicit RClick handler required: once set, energye will not auto-show the menu.
 	systray.SetOnRClick(func(menu systray.IMenu) {
-		_ = menu.ShowMenu()
+		if menu != nil {
+			_ = menu.ShowMenu()
+		}
 	})
 }

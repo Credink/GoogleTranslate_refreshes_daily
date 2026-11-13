@@ -30,23 +30,29 @@ type Report struct {
 }
 
 // Refresh runs one availability check. Online IP list fetch happens only after
-// the current hosts IP fails (and AllowOnlineOnFailure is true).
+// the current hosts IP fails (and AllowOnlineOnFailure is true), and only if the
+// local seed pool cannot yield a working IP.
 func Refresh(ctx context.Context, cfg state.Config, st state.State) (Report, state.State) {
 	now := time.Now()
 	rep := Report{CheckedAt: now, Status: state.StatusFailed}
 
-	pcfg := probe.Config{
+	stableCfg := probe.Config{
 		Timeout: time.Duration(cfg.TimeoutMS) * time.Millisecond,
 		Repeat:  cfg.Repeat,
 		Workers: cfg.Workers,
+	}
+	// Pool scan: single attempt per IP, early-exit on first success, keep last-known first.
+	scanCfg := probe.Config{
+		Timeout:          time.Duration(cfg.TimeoutMS) * time.Millisecond,
+		Repeat:           1,
+		Workers:          cfg.Workers,
+		StopAfterSuccess: 1,
+		PriorityKeep:     1,
 	}
 
 	useIPv6 := false
 	if cfg.IncludeIPv6 {
 		useIPv6 = netcheck.IPv6Usable(ctx)
-		if !useIPv6 {
-			// Keep going on IPv4 for this run.
-		}
 	}
 	rep.UsedIPv6 = useIPv6
 
@@ -54,7 +60,7 @@ func Refresh(ctx context.Context, cfg state.Config, st state.State) (Report, sta
 	if content, err := hostsfile.Read(hostsPath); err == nil {
 		cur := hostsfile.CurrentIPFor(content, probe.DefaultHost)
 		if cur != "" {
-			if lat, err := probe.TestIPStable(ctx, pcfg, cur); err == nil {
+			if lat, err := probe.TestIPStable(ctx, stableCfg, cur); err == nil {
 				rep.Status = state.StatusOK
 				rep.BestIP = cur
 				rep.Latency = lat.Round(time.Millisecond).String()
@@ -66,11 +72,9 @@ func Refresh(ctx context.Context, cfg state.Config, st state.State) (Report, sta
 		}
 	}
 
-	// Current mapping failed (or missing) → build pool; online only if allowed.
-	online := cfg.AllowOnlineOnFailure
-	rep.Online = online
-	pool, err := discover.BuildPool(ctx, discover.PoolOptions{
-		Online:        online,
+	// Current mapping failed (or missing) → local seed first (no remote sync).
+	best, bestLat, failedLocal, err := findBest(ctx, scanCfg, discover.PoolOptions{
+		Online:        false,
 		IncludeIPv6:   useIPv6,
 		LastKnownGood: st.LastIP,
 	})
@@ -80,18 +84,37 @@ func Refresh(ctx context.Context, cfg state.Config, st state.State) (Report, sta
 		return rep, st
 	}
 
-	result, err := probe.Speedtest(ctx, pcfg, pool)
-	if err != nil && !errors.Is(err, context.Canceled) {
-		rep.Message = "测速失败: " + err.Error()
-		st = persist(st, rep)
-		return rep, st
+	online := false
+	failed := failedLocal
+	if best == "" && cfg.AllowOnlineOnFailure {
+		online = true
+		rep.Online = true
+		var failedOnline int
+		best, bestLat, failedOnline, err = findBest(ctx, scanCfg, discover.PoolOptions{
+			Online:        true,
+			SkipSeed:      true, // local seed already exhausted
+			IncludeIPv6:   useIPv6,
+			LastKnownGood: st.LastIP,
+		})
+		failed += failedOnline
+		if err != nil && best == "" {
+			rep.Message = "构建/测速 IP 候选失败: " + err.Error()
+			st = persist(st, rep)
+			return rep, st
+		}
 	}
-	best, bestLat := result.BestIPPreferV4()
+
 	if best == "" {
-		rep.Message = fmt.Sprintf("未找到可用 IP（失败 %d 个候选）", result.Failed)
+		rep.Message = fmt.Sprintf("未找到可用 IP（失败 %d 个候选）", failed)
 		st = persist(st, rep)
 		return rep, st
 	}
+
+	// Confirm winner once more before writing hosts.
+	if lat, err := probe.TestIP(ctx, stableCfg, best); err == nil {
+		bestLat = lat
+	}
+
 	rep.BestIP = best
 	rep.Latency = bestLat.Round(time.Millisecond).String()
 
@@ -123,7 +146,7 @@ func Refresh(ctx context.Context, cfg state.Config, st state.State) (Report, sta
 	rep.Updated = true
 	msg := fmt.Sprintf("已更新 hosts → %s (%s)", best, rep.Latency)
 	if online {
-		msg += "（已按需拉取远程 IP 库）"
+		msg += "（本地候选不可用，已按需拉取远程 IP 库）"
 	}
 	if cfg.IncludeIPv6 && !useIPv6 {
 		msg += "；本机 IPv6 不可用，本轮仅用 IPv4"
@@ -138,6 +161,19 @@ func Refresh(ctx context.Context, cfg state.Config, st state.State) (Report, sta
 	}
 	st = persist(st, rep)
 	return rep, st
+}
+
+func findBest(ctx context.Context, scanCfg probe.Config, opt discover.PoolOptions) (best string, lat time.Duration, failed int, err error) {
+	pool, err := discover.BuildPool(ctx, opt)
+	if err != nil {
+		return "", 0, 0, err
+	}
+	result, err := probe.Speedtest(ctx, scanCfg, pool)
+	if err != nil && !errors.Is(err, context.Canceled) && len(result.Available) == 0 {
+		return "", 0, result.Failed, err
+	}
+	ip, latency := result.BestIPPreferV4()
+	return ip, latency, result.Failed, nil
 }
 
 func writeHosts(hostsPath, newContent string) error {
