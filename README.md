@@ -85,7 +85,8 @@ bash scripts/package-darwin.sh
 | **管理员模式（可选）** | 设置勾选 → 提权重启；之后换 IP 可静默写 hosts |
 
 - **Windows**：`ShellExecute runas`；降权尝试关联令牌  
-- **macOS / Linux**：osascript / pkexec（及 sudo 回退）best-effort；降权常需手动退出再开  
+- **macOS**：osascript best-effort；降权常需手动退出再开  
+- **Linux**：请普通用户运行；写 hosts 时 `pkexec` 只提权 `--apply-hosts`（AppImage 走 `$APPIMAGE`）。**不要** `sudo` 整个 GUI/托盘
 
 配置目录：Windows `%AppData%\…`；macOS `~/Library/Application Support/…`；Linux `~/.config/…`（均 `GoogleTranslateHostsUpdater`）。
 

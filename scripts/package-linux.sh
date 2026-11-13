@@ -115,6 +115,18 @@ export PATH="$usr/bin:${PATH:-/usr/bin}"
 export LD_LIBRARY_PATH="$usr/lib:$usr/lib/x86_64-linux-gnu:$usr/lib/aarch64-linux-gnu:$usr/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export XDG_DATA_DIRS="$usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
 export GSETTINGS_SCHEMA_DIR="$usr/share/glib-2.0/schemas"
+# Prefer bundled GIO modules (or none) so host gvfs does not clash with bundled glib
+# (avoids g_task_set_static_name / libgvfsdbus warnings on Mint et al.).
+GIO_CANDIDATE=""
+for _gio in "$usr/lib/gio/modules" \
+            "$usr/lib/x86_64-linux-gnu/gio/modules" \
+            "$usr/lib/aarch64-linux-gnu/gio/modules"; do
+  if [ -d "$_gio" ]; then
+    GIO_CANDIDATE="$_gio"
+    break
+  fi
+done
+export GIO_MODULE_DIR="${GIO_CANDIDATE:-}"
 for bundle in "$usr"/lib/webkit*gtk-*/injected-bundle/*.so \
               "$usr"/lib/*/webkit*gtk-*/injected-bundle/*.so \
               "$usr"/lib*/*/webkit*gtk-*/injected-bundle/*.so; do

@@ -32,6 +32,7 @@ type App struct {
 	trayIcon         []byte
 	trayTemplateIcon []byte
 	trayStop         func()
+	skipTray         bool // set when GUI started as root (Unix); avoid systray crash
 }
 
 func NewApp() *App {
@@ -55,8 +56,9 @@ func (a *App) startup(ctx context.Context) {
 	a.st = st
 	a.mu.Unlock()
 
-	// Preference is admin mode but this process is not elevated → UAC/pkexec relaunch once.
-	if cfg.RunAsAdmin && !elevate.IsElevated() {
+	// Preference is admin mode but this process is not elevated → UAC relaunch once
+	// (Windows/macOS). Linux only elevates --apply-hosts via pkexec; never whole GUI.
+	if cfg.RunAsAdmin && !elevate.IsElevated() && elevate.SupportsProcessElevation() {
 		log.Printf("app: run_as_admin set but not elevated; requesting elevated relaunch")
 		if err := elevate.RelaunchElevated(); err != nil {
 			log.Printf("app: elevated relaunch declined or failed: %v — continuing as normal user", err)
@@ -69,24 +71,36 @@ func (a *App) startup(ctx context.Context) {
 		}
 	}
 
-	a.trayStop = tray.Start(tray.Hooks{
-		Icon:         a.trayIcon,
-		TemplateIcon: a.trayTemplateIcon,
-		OnRefresh: func() {
-			a.runRefresh(true)
-			a.pushTrayStatus()
-		},
-		OnShowSettings: func() {
-			a.showMainWindow()
-		},
-		OnQuit: func() {
-			a.requestQuit()
-		},
-		StatusProvider: func() string {
-			s := a.GetStatus()
-			return s.TrayLine
-		},
-	})
+	if a.skipTray {
+		log.Printf("app: skipping system tray (running as root)")
+		go func() {
+			time.Sleep(400 * time.Millisecond)
+			_, _ = wailsruntime.MessageDialog(a.ctx, wailsruntime.MessageDialogOptions{
+				Type:    wailsruntime.WarningDialog,
+				Title:   "请勿以 root 运行",
+				Message: elevate.RootGUIWarning,
+			})
+		}()
+	} else {
+		a.trayStop = tray.Start(tray.Hooks{
+			Icon:         a.trayIcon,
+			TemplateIcon: a.trayTemplateIcon,
+			OnRefresh: func() {
+				a.runRefresh(true)
+				a.pushTrayStatus()
+			},
+			OnShowSettings: func() {
+				a.showMainWindow()
+			},
+			OnQuit: func() {
+				a.requestQuit()
+			},
+			StatusProvider: func() string {
+				s := a.GetStatus()
+				return s.TrayLine
+			},
+		})
+	}
 
 	// Re-apply persisted launch-at-login preference (safe if already registered).
 	if cfg.LaunchAtLogin && autostart.Supported() {
@@ -382,6 +396,9 @@ func (a *App) SaveSettings(s SettingsDTO) string {
 
 	// Dual elevation mode transitions: persist first, then relaunch + quit.
 	if s.RunAsAdmin && !prevAdmin {
+		if !elevate.SupportsProcessElevation() {
+			return "设置已保存。Linux 上请保持普通用户运行；写入 hosts 时会弹出 pkexec 授权（不支持整进程 root GUI）。"
+		}
 		if elevate.IsElevated() {
 			return "设置已保存（已在管理员模式下运行）"
 		}
@@ -418,6 +435,9 @@ func (a *App) RelaunchAsAdmin() string {
 	}
 	if !want {
 		return "请先勾选「以管理员身份运行」并保存"
+	}
+	if !elevate.SupportsProcessElevation() {
+		return "Linux 不支持整进程管理员模式；请普通用户运行，写 hosts 时使用 pkexec 按次授权"
 	}
 	if err := elevate.RelaunchElevated(); err != nil {
 		return "提权重启失败: " + err.Error()

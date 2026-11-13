@@ -31,61 +31,14 @@ func relaunchElevated(exe, args string) error {
 		}
 		return nil
 	default:
-		argv := []string{exe}
-		if args != "" {
-			// args is "--elevated-relaunch <nonce>"
-			fields := splitArgs(args)
-			argv = append(argv, fields...)
-		}
-		return startElevatedLinux(argv...)
+		// Linux: never relaunch the full GUI/tray as root — energye/systray D-Bus
+		// panics with a nil Conn, and AppImage+FUSE is hostile to root. Hosts
+		// writes elevate only via --apply-hosts (pkexec).
+		_ = exe
+		_ = args
+		return fmt.Errorf("%w: Linux 不支持以 root 运行完整界面/托盘；请保持普通用户启动，写入 hosts 时会弹出 pkexec 授权。%s",
+			ErrNeedElevation, Hint())
 	}
-}
-
-func startElevatedLinux(argv ...string) error {
-	tryStart := func(name string, full []string) error {
-		if _, err := exec.LookPath(name); err != nil {
-			return err
-		}
-		cmd := exec.Command(name, full...)
-		cmd.Stdout = nil
-		cmd.Stderr = nil
-		cmd.Stdin = nil
-		return cmd.Start()
-	}
-	// pkexec argv0 is the target program.
-	if err := tryStart("pkexec", argv); err == nil {
-		return nil
-	}
-	for _, helper := range []string{"lxqt-sudo", "gksudo", "kdesudo", "sudo"} {
-		if err := tryStart(helper, argv); err == nil {
-			return nil
-		}
-	}
-	return fmt.Errorf("%w: no pkexec/sudo helper; %s", ErrNeedElevation, Hint())
-}
-
-func splitArgs(s string) []string {
-	var out []string
-	var cur string
-	inQuote := false
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		switch {
-		case c == '"':
-			inQuote = !inQuote
-		case c == ' ' && !inQuote:
-			if cur != "" {
-				out = append(out, cur)
-				cur = ""
-			}
-		default:
-			cur += string(c)
-		}
-	}
-	if cur != "" {
-		out = append(out, cur)
-	}
-	return out
 }
 
 func relaunchUnelevated(exe string) error {

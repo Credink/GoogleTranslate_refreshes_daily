@@ -74,9 +74,19 @@ func main() {
 	setupFileLog()
 	log.Printf("main: %s", BuildInfo())
 
+	// Linux/macOS: full GUI+tray as root is unsupported (systray D-Bus nil Conn on Linux).
+	// --apply-hosts above already exited; warn and continue without tray.
+	if runtime.GOOS != "windows" && elevate.IsElevated() {
+		fmt.Fprintln(os.Stderr, elevate.RootGUIWarning)
+		log.Printf("main: euid=0 — %s", elevate.RootGUIWarning)
+	}
+
 	app := NewApp()
 	app.trayIcon = trayIcon
 	app.trayTemplateIcon = trayTemplateIcon
+	if runtime.GOOS != "windows" && elevate.IsElevated() {
+		app.skipTray = true
+	}
 
 	// Initial geometry is a content-fit fallback; OnStartup re-sizes from the
 	// primary/current screen logical work area (DPI-aware) via winsize.Fit.

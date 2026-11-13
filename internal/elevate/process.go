@@ -2,7 +2,6 @@ package elevate
 
 import (
 	"fmt"
-	"os"
 	"runtime"
 	"time"
 )
@@ -26,15 +25,24 @@ func PlatformNotes() string {
 	case "darwin":
 		return "macOS：开启管理员模式会尝试通过系统授权重启；关闭管理员模式时若无法自动降权，请完全退出后普通再开。"
 	default:
-		return "Linux：开启管理员模式会尝试 pkexec 重启；关闭时若无法自动降权，请完全退出后普通再开。"
+		return "Linux：请始终以普通用户运行（不要 sudo 整个 AppImage）。写入 hosts 时会弹出 pkexec/polkit 授权对话框，只提权 --apply-hosts 助手。不支持以 root 跑完整 GUI/托盘。"
 	}
+}
+
+// SupportsProcessElevation reports whether this OS can relaunch the full GUI elevated.
+// Linux only elevates the --apply-hosts helper via pkexec.
+func SupportsProcessElevation() bool {
+	return runtime.GOOS == "windows" || runtime.GOOS == "darwin"
 }
 
 // RelaunchElevated starts a new elevated instance of this executable (GUI) and
 // waits until that instance signals it is running (so UAC cancel does not quit us).
 // The caller should then quit.
 func RelaunchElevated() error {
-	exe, err := os.Executable()
+	if !SupportsProcessElevation() {
+		return fmt.Errorf("%w: 当前系统不支持整进程管理员模式；写入 hosts 时会按次弹出 pkexec 授权", ErrNeedElevation)
+	}
+	exe, err := SelfExecutable()
 	if err != nil {
 		return err
 	}
@@ -52,7 +60,7 @@ func RelaunchElevated() error {
 // RelaunchUnelevated starts a new normal-user instance when possible, then the
 // caller should quit. On some platforms this is best-effort.
 func RelaunchUnelevated() error {
-	exe, err := os.Executable()
+	exe, err := SelfExecutable()
 	if err != nil {
 		return err
 	}
@@ -64,3 +72,6 @@ func RelaunchUnelevated() error {
 	}
 	return nil
 }
+
+// RootGUIWarning is shown / logged when the GUI is started as root on Unix.
+const RootGUIWarning = "请勿使用 sudo 运行本程序的完整界面。请以普通用户启动；写入 /etc/hosts 时会弹出 pkexec 授权对话框。系统托盘在 root 下已禁用，以免崩溃。"

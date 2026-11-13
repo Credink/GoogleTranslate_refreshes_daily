@@ -11,7 +11,7 @@
 5. **安装包产物：** 输出到 `packages/`。Windows=portable zip（可选 NSIS）；**macOS=`.dmg`**；**Linux=`.AppImage`**（DMG 仅为 macOS，Linux 用 AppImage 替代）
 6. **开机自启：** Windows HKCU Run；macOS LaunchAgent；Linux XDG `~/.config/autostart/*.desktop`；设置页 `launch_at_login`
 7. **macOS / Linux GUI：** 代码路径已齐；完整托盘验收需真机。Release 由 CI（`macos-14` / `ubuntu-latest`）构建（见 `build/darwin/README.md`、`build/linux/README.md`、`.github/workflows/release.yml`）
-8. **双权限模式：** 默认普通用户（按次 `--apply-hosts` 提权）；可选 `run_as_admin` 长期提权静默写 hosts。开启/关闭会尝试 relaunch；Windows 完整实现，macOS/Linux best-effort（降权常需手动）
+8. **双权限模式：** 默认普通用户（按次 `--apply-hosts` 提权）；可选 `run_as_admin` 长期提权静默写 hosts。Windows 完整 relaunch；macOS best-effort；**Linux 不支持整 GUI root**（只 `pkexec` 提权 `--apply-hosts`，AppImage 走 `$APPIMAGE`）
 9. **代理插件 bypass（best-effort，幂等）：** 写入 hosts 后 / 首次检查 / GUI「配置代理插件绕过」会扫描 Chrome/Edge 的 ZeroOmega、SwitchyOmega LevelDB。**先检查是否已在 bypass/DIRECT**；已正确则跳过写入。仅缺失或 `ranslate` 等笔误时才修补。同域名集且上次已 OK 时自动流程不再重复改写。**不声称覆盖全部代理扩展**。详见 README「Hosts ≠ 代理路径」。
 
 ## 探测摘要

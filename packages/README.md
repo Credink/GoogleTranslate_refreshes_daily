@@ -20,6 +20,8 @@
 
 ## Linux AppImage 怎么跑
 
+**请以普通用户直接运行，不要 `sudo` 整个 AppImage。** 主界面与托盘必须在普通会话里；写入 `/etc/hosts` 时会通过 `pkexec`（polkit）只提权 `--apply-hosts` 助手并弹出授权对话框（与 Windows 上「普通 UI + 按次 UAC」同一模型）。
+
 ```bash
 chmod +x GoogleTranslateHostsUpdater-v*-linux-amd64-*.AppImage
 ./GoogleTranslateHostsUpdater-v*-linux-amd64-*.AppImage
@@ -32,6 +34,15 @@ APPIMAGE_EXTRACT_AND_RUN=1 ./GoogleTranslateHostsUpdater-v*-linux-amd64-*.AppIma
 # 或
 ./GoogleTranslateHostsUpdater-v*-linux-amd64-*.AppImage --appimage-extract-and-run
 ```
+
+### 写 hosts 提权（Mint / Ubuntu 桌面）
+
+1. 普通用户启动 AppImage（保留运行时注入的 `APPIMAGE` 环境变量）。
+2. 点「立即刷新」或等到需要改 hosts 时，应出现 **pkexec / 策略套件** 密码或确认框。
+3. 确认后仅短暂以 root 执行 `--apply-hosts`，写完即退出；主程序仍是普通用户。
+4. **不要** `sudo ./…AppImage`：整进程 root 会导致托盘 D-Bus 崩溃；若误用 sudo，程序会跳过托盘并提示改用普通用户。
+
+`Gtk-Message: Failed to load module "xapp-gtk3-module"` 在 Linux Mint 上通常无害，可忽略。
 
 ### AppImage 内已捆绑（构建机 Ubuntu 22.04 / webkit2gtk-4.0）
 
@@ -55,7 +66,7 @@ APPIMAGE_EXTRACT_AND_RUN=1 ./GoogleTranslateHostsUpdater-v*-linux-amd64-*.AppIma
 | 字体 | 使用系统 fontconfig/字体 |
 | 托盘宿主 | StatusNotifier / AppIndicator 宿主；没有时仍可用主窗口 |
 | FUSE | 可选；没有就用上面的 extract-and-run |
-| 写 hosts 提权 | `pkexec` / `sudo` 等 |
+| 写 hosts 提权 | 系统需有 `pkexec`（policykit-1）；按次授权，勿 sudo 整包 |
 
 ### 若仍缺库（罕见 / 极旧发行版）
 

@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"GoogleTranslate_refreshes_daily/internal/elevate"
 )
 
 // XDG Autostart: ~/.config/autostart/<name>.desktop
@@ -25,7 +27,8 @@ func desktopPath() (string, error) {
 }
 
 func exePath() (string, error) {
-	return os.Executable()
+	// Prefer $APPIMAGE so autostart relaunches the on-disk AppImage, not the FUSE mount.
+	return elevate.SelfExecutable()
 }
 
 func isEnabled() (bool, error) {

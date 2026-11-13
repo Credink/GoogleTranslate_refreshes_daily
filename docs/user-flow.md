@@ -23,7 +23,7 @@
 | 模式 | 行为 |
 |------|------|
 | **普通用户（默认）** | 改 hosts 时按次提权（Windows UAC / macOS 密码 / Linux pkexec） |
-| **管理员模式（可选）** | 设置勾选「以管理员身份运行」→ 提权重启后，换 IP 可静默写 hosts |
+| **管理员模式（可选）** | Windows/macOS：设置勾选后提权重启，换 IP 可静默写 hosts。**Linux：请始终普通用户运行**；写 hosts 时 pkexec 按次授权（勿 sudo 整个 AppImage） |
 
 关闭管理员模式后若无法自动降权：完全退出，再以普通方式打开。
 

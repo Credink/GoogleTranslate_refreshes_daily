@@ -5,7 +5,7 @@
 | 能力 | 实现 |
 |------|------|
 | 托盘 | `internal/tray/tray_other.go`（energye/systray + libayatana-appindicator / StatusNotifier） |
-| 提权写 hosts | `pkexec` → `lxqt-sudo`/`gksudo`/`kdesudo` → `sudo` |
+| 提权写 hosts | 仅 `--apply-hosts`：`pkexec`（优先，带 DISPLAY/APPIMAGE）→ `lxqt-sudo`/`gksudo`/`kdesudo` → `sudo`；**禁止**整 GUI root |
 | 开机自启 | XDG `~/.config/autostart/GoogleTranslateHostsUpdater.desktop` |
 | DNS 刷新 | `resolvectl` / `systemd-resolve` / `nscd` / `nmcli`（best-effort） |
 | 代理插件 | 扫描 `~/.config/google-chrome`、`chromium`、`microsoft-edge` |
@@ -41,14 +41,19 @@ bash scripts/package-linux.sh
 
 ```bash
 chmod +x packages/GoogleTranslateHostsUpdater-v*-linux-amd64-*.AppImage
+# 普通用户 — 不要 sudo
 ./packages/GoogleTranslateHostsUpdater-v*-linux-amd64-*.AppImage
 # 无 FUSE：
 APPIMAGE_EXTRACT_AND_RUN=1 ./packages/GoogleTranslateHostsUpdater-v*-linux-amd64-*.AppImage
 ```
+
+写 hosts 时应弹出 **pkexec** 对话框。提权会重新执行磁盘上的 `.AppImage`（`$APPIMAGE`），并带 `APPIMAGE_EXTRACT_AND_RUN=1`，避免 FUSE 挂载对 root 不可读。详见 [`packages/README.md`](../../packages/README.md)。
 
 ## 限制
 
 - 需要 **Linux 主机 + CGO**（GTK/WebKit）；无法在 Windows 上交叉编译完整 GUI。
 - CI 基线 **Ubuntu 22.04 + webkit2gtk-4.0**（与 Ubuntu 24.04 默认的 4.1 SONAME 不同；发布包以内嵌 4.0 为准）。
 - 发行版差异大：无托盘宿主时菜单可能不可见，请用主窗口操作。
+- **不要** `sudo` 跑完整 GUI/托盘（energye/systray 在 root 下会 D-Bus 崩溃）；误开时会跳过托盘并警告。
+- Linux Mint 的 `xapp-gtk3-module` 加载失败提示通常可忽略。
 - 完整桌面验收需真机；CI（`ubuntu-22.04`）负责产出 Release / artifact。
