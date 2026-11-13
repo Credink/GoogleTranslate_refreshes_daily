@@ -1,7 +1,7 @@
 # 谷歌翻译 Hosts 更新器
 
 跨平台桌面工具：按计划检测 `translate.googleapis.com` 可用 IP，**仅在当前 hosts 映射失效时**拉取远程 IP 库、测速选优并更新系统 hosts。  
-技术栈：**Go + Wails v2**（设置窗口 + 系统托盘）。许可：**Apache-2.0**。当前版本：**0.1.3**。
+技术栈：**Go + Wails v2**（设置窗口 + 系统托盘）。许可：**Apache-2.0**。当前版本：**0.1.4**。
 
 **完整使用流程（推荐先读）：[`docs/user-flow.md`](docs/user-flow.md)**
 
@@ -27,7 +27,7 @@ IP 探测思路参考 [GoogleTranslate_IPFinder](https://github.com/GoodCoder666
 | **macOS (Apple Silicon)** | **`.dmg`** | 打开映像，拖到「应用程序」；未公证时可能需「仍要打开」 |
 | **Linux (x86_64)** | **`.AppImage`** | `chmod +x` 后**普通用户**直接运行（**不要 sudo**；**不是 DMG**） |
 
-发布包命名示例与 Linux AppImage（含捆绑 WebKit）说明见 [`packages/README.md`](packages/README.md)。推送 tag（如 `v0.1.3`）后，[`.github/workflows/release.yml`](.github/workflows/release.yml) 会在三平台构建并上传同名约定资源。
+发布包命名示例与 Linux AppImage（含捆绑 WebKit）说明见 [`packages/README.md`](packages/README.md)。推送 tag（如 `v0.1.4`）后，[`.github/workflows/release.yml`](.github/workflows/release.yml) 会在三平台构建并上传同名约定资源。
 
 关闭窗口 = **隐藏到托盘**；托盘「退出程序」才真正结束。托盘可：立即刷新 / 打开设置 / 退出。
 

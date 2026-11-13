@@ -14,7 +14,7 @@ PKG_DIR="$ROOT/packages"
 TOOLS_DIR="$ROOT/tools"
 mkdir -p "$BIN_DIR" "$PKG_DIR" "$TOOLS_DIR"
 
-VER="${VERSION:-0.1.3}"
+VER="${VERSION:-0.1.4}"
 COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 BUILT="$(date -Iseconds)"
 LD="-X main.BuildCommit=${COMMIT} -X main.BuildTime=${BUILT}"

@@ -12,9 +12,9 @@
 
 示例文件名：
 
-- `GoogleTranslateHostsUpdater-v0.1.3-windows-amd64-YYYYMMDD-HHMM-portable.zip`
-- `GoogleTranslateHostsUpdater-v0.1.3-darwin-arm64-YYYYMMDD-HHMM.dmg`
-- `GoogleTranslateHostsUpdater-v0.1.3-linux-amd64-YYYYMMDD-HHMM.AppImage`
+- `GoogleTranslateHostsUpdater-v0.1.4-windows-amd64-YYYYMMDD-HHMM-portable.zip`
+- `GoogleTranslateHostsUpdater-v0.1.4-darwin-arm64-YYYYMMDD-HHMM.dmg`
+- `GoogleTranslateHostsUpdater-v0.1.4-linux-amd64-YYYYMMDD-HHMM.AppImage`
 
 中间产物仍在 `build/bin/`。本目录下的二进制包默认不入库（见根 `.gitignore`）。旧的 Linux tar/zip 表述已废弃，发布只认 **AppImage**。
 

@@ -26,7 +26,7 @@ if (-not (Test-Path $Exe)) {
 
 # Portable zip with version + date so users do not reopen a stale archive.
 $stamp = Get-Date -Format "yyyyMMdd-HHmm"
-$ver = if ($env:VERSION) { $env:VERSION } else { "0.1.3" }
+$ver = if ($env:VERSION) { $env:VERSION } else { "0.1.4" }
 $ZipName = "GoogleTranslateHostsUpdater-v$ver-windows-amd64-$stamp-portable.zip"
 $Zip = Join-Path $PkgDir $ZipName
 if (Test-Path $Zip) { Remove-Item $Zip -Force }

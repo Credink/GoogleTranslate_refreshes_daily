@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to publish (e.g. v0.1.3). Leave empty to only build artifacts."
+        description: "Release tag to publish (e.g. v0.1.4). Leave empty to only build artifacts."
         required: false
         default: ""
 
@@ -15,7 +15,7 @@ permissions:
   contents: write
 
 env:
-  VERSION: "0.1.3"
+  VERSION: "0.1.4"
   GO_VERSION: "1.26.x"
   NODE_VERSION: "22"
 
@@ -164,16 +164,24 @@ jobs:
           TAG="${{ steps.tag.outputs.name }}"
           NOTES="## 谷歌翻译 Hosts 更新器 ${TAG}
 
+          ### 本版要点
+
+          - **打包**：Windows 便携 zip；macOS **DMG**（darwin-arm64）；Linux **AppImage**（amd64，捆绑 WebKitGTK/GTK/托盘库）
+          - **默认调度**：\`on_app_start\`（软件启动时刷新）；可选每天午夜 / 按小时间隔
+          - **Linux 提权**：普通用户跑 UI，写 hosts 时经 \`pkexec\` 仅提权 \`--apply-hosts\`（勿 sudo 整包）
+          - **ZeroOmega**：修正 Linux/macOS 扩展配置路径发现，便于自动写入 DIRECT 绕过
+          - **安全加固**：提升权限下的 \`--apply-hosts\` 与 hosts 写入校验（路径/内容守卫）
+
           ### 资源格式
 
           | 平台 | 格式 |
           |------|------|
           | Windows amd64 | 便携 zip（\`*-portable.zip\`）；可选 NSIS installer |
           | **macOS Apple Silicon** | **\`.dmg\`** |
-          | **Linux x86_64** | **\`.AppImage\`**（DMG 仅为 macOS 格式；Linux 用 AppImage 作为对等单文件包） |
+          | **Linux x86_64** | **\`.AppImage\`**（DMG 仅为 macOS；Linux 用 AppImage） |
 
           - macOS：未公证；首次打开可能需「仍要打开」
-          - Linux AppImage：\`chmod +x\` 后运行；已捆绑 WebKitGTK/GTK/托盘库（仍需 glibc/显示服务/GPU 驱动/字体）
+          - Linux AppImage：\`chmod +x\` 后**普通用户**运行；已捆绑 WebKit（仍需 glibc/显示服务/GPU/字体/\`pkexec\`）
           - 使用说明：\`docs/user-flow.md\` / README / \`packages/README.md\`"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
