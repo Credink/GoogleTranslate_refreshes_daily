@@ -43,8 +43,8 @@ jobs:
         with:
           name: windows-amd64
           path: |
-            build/dist/*-windows-amd64-*-portable.zip
-            build/dist/*installer*.exe
+            packages/*-windows-amd64-*-portable.zip
+            packages/*installer*.exe
           if-no-files-found: error
 
   build-linux:
@@ -78,7 +78,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-amd64
-          path: build/dist/*-linux-amd64-*.tar.gz
+          path: packages/*-linux-amd64-*.tar.gz
           if-no-files-found: error
 
   build-darwin:
@@ -112,11 +112,11 @@ jobs:
             LD="-X main.BuildCommit=${COMMIT} -X main.BuildTime=${BUILT}"
             wails build -platform "darwin/${ARCH}" -ldflags "$LD"
             BIN_DIR="build/bin"
-            DIST_DIR="build/dist"
-            mkdir -p "$DIST_DIR"
+            PKG_DIR="packages"
+            mkdir -p "$PKG_DIR"
             APP_BUNDLE="$(find "$BIN_DIR" -maxdepth 2 -type d -name 'GoogleTranslateHostsUpdater.app' | head -n1)"
             STAMP="$(date +%Y%m%d-%H%M)"
-            ZIP="$DIST_DIR/GoogleTranslateHostsUpdater-v${VERSION}-darwin-${ARCH}-${STAMP}.zip"
+            ZIP="$PKG_DIR/GoogleTranslateHostsUpdater-v${VERSION}-darwin-${ARCH}-${STAMP}.zip"
             ditto -c -k --sequesterRsrc --keepParent "$APP_BUNDLE" "$ZIP"
             echo "macOS package: $ZIP"
           fi
@@ -124,7 +124,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: darwin-app
-          path: build/dist/*-darwin-*.zip
+          path: packages/*-darwin-*.zip
           if-no-files-found: warn
 
   publish:

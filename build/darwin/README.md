@@ -18,7 +18,7 @@
 bash scripts/package-darwin.sh
 ```
 
-产物：`build/dist/GoogleTranslateHostsUpdater-v*-darwin-arm64-*.zip`
+产物：`packages/GoogleTranslateHostsUpdater-v*-darwin-arm64-*.zip`
 
 ## 限制
 

@@ -22,7 +22,7 @@ wails doctor
 bash scripts/package-linux.sh
 ```
 
-产物：`build/dist/GoogleTranslateHostsUpdater-v*-linux-amd64-*.tar.gz`
+产物：`packages/GoogleTranslateHostsUpdater-v*-linux-amd64-*.tar.gz`
 
 ## 限制
 

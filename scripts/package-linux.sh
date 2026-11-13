@@ -7,8 +7,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 BIN_DIR="$ROOT/build/bin"
-DIST_DIR="$ROOT/build/dist"
-mkdir -p "$BIN_DIR" "$DIST_DIR"
+PKG_DIR="$ROOT/packages"
+mkdir -p "$BIN_DIR" "$PKG_DIR"
 
 VER="${VERSION:-0.1.2}"
 COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
@@ -30,7 +30,7 @@ if [[ -z "${BIN}" || ! -f "$BIN" ]]; then
 fi
 
 STAMP="$(date +%Y%m%d-%H%M)"
-STAGE="$DIST_DIR/stage-linux-amd64"
+STAGE="$PKG_DIR/.stage-linux-amd64"
 rm -rf "$STAGE"
 mkdir -p "$STAGE"
 cp "$BIN" "$STAGE/$APP"
@@ -43,7 +43,7 @@ cat >"$STAGE/README.txt" <<EOF
 详见 docs/user-flow.md
 EOF
 
-TAR="$DIST_DIR/${APP}-v${VER}-linux-amd64-${STAMP}.tar.gz"
+TAR="$PKG_DIR/${APP}-v${VER}-linux-amd64-${STAMP}.tar.gz"
 tar -C "$STAGE" -czf "$TAR" .
 rm -rf "$STAGE"
 echo "Linux package: $TAR"

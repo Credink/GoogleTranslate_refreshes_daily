@@ -8,8 +8,8 @@ $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
 $BinDir = Join-Path $Root "build\bin"
-$DistDir = Join-Path $Root "build\dist"
-New-Item -ItemType Directory -Force -Path $BinDir, $DistDir | Out-Null
+$PkgDir = Join-Path $Root "packages"
+New-Item -ItemType Directory -Force -Path $BinDir, $PkgDir | Out-Null
 
 $commit = (git rev-parse --short HEAD 2>$null)
 if (-not $commit) { $commit = "unknown" }
@@ -28,7 +28,7 @@ if (-not (Test-Path $Exe)) {
 $stamp = Get-Date -Format "yyyyMMdd-HHmm"
 $ver = if ($env:VERSION) { $env:VERSION } else { "0.1.2" }
 $ZipName = "GoogleTranslateHostsUpdater-v$ver-windows-amd64-$stamp-portable.zip"
-$Zip = Join-Path $DistDir $ZipName
+$Zip = Join-Path $PkgDir $ZipName
 if (Test-Path $Zip) { Remove-Item $Zip -Force }
 Compress-Archive -Path $Exe -DestinationPath $Zip -Force
 Write-Host "Portable zip: $Zip"
@@ -65,8 +65,8 @@ if ($makensis) {
         Write-Warning "wails -nsis failed; portable zip is still available"
     } else {
         Get-ChildItem $BinDir -Filter "*installer*.exe" | ForEach-Object {
-            Copy-Item $_.FullName $DistDir -Force
-            Write-Host "Installer: $(Join-Path $DistDir $_.Name)"
+            Copy-Item $_.FullName $PkgDir -Force
+            Write-Host "Installer: $(Join-Path $PkgDir $_.Name)"
         }
     }
 } else {

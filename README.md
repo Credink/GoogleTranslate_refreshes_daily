@@ -55,9 +55,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\package-windows.ps1
 
 | 路径 | 说明 |
 |------|------|
-| `build/bin/GoogleTranslateHostsUpdater.exe` | 主程序 |
-| `build/bin/*-installer.exe` | NSIS 安装包（需 makensis） |
-| `build/dist/*-portable.zip` | 便携包 |
+| `build/bin/GoogleTranslateHostsUpdater.exe` | 主程序（中间产物） |
+| `packages/*-portable.zip` | 便携包（最终发布目录） |
+| `packages/*installer*.exe` | NSIS 安装包（需 makensis） |
 
 ### Linux amd64 / macOS arm64
 
@@ -72,6 +72,8 @@ bash scripts/package-darwin.sh
 ```
 
 推送 tag（如 `v0.1.2`）后，[`.github/workflows/release.yml`](.github/workflows/release.yml) 会在三平台构建并发布 Release 资源。
+
+最终 zip/tar 统一输出到仓库根目录 [`packages/`](packages/)（与 Release 资源同名约定）。
 
 ## 两种权限模式
 

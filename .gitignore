@@ -1,5 +1,8 @@
 build/bin
 build/dist
+packages/*
+!packages/.gitkeep
+!packages/README.md
 tools/
 node_modules
 frontend/dist

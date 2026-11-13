@@ -7,8 +7,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 BIN_DIR="$ROOT/build/bin"
-DIST_DIR="$ROOT/build/dist"
-mkdir -p "$BIN_DIR" "$DIST_DIR"
+PKG_DIR="$ROOT/packages"
+mkdir -p "$BIN_DIR" "$PKG_DIR"
 
 VER="${VERSION:-0.1.2}"
 COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
@@ -29,7 +29,7 @@ if [[ -z "${APP_BUNDLE}" || ! -d "$APP_BUNDLE" ]]; then
 fi
 
 STAMP="$(date +%Y%m%d-%H%M)"
-ZIP="$DIST_DIR/GoogleTranslateHostsUpdater-v${VER}-darwin-arm64-${STAMP}.zip"
+ZIP="$PKG_DIR/GoogleTranslateHostsUpdater-v${VER}-darwin-arm64-${STAMP}.zip"
 rm -f "$ZIP"
 ditto -c -k --sequesterRsrc --keepParent "$APP_BUNDLE" "$ZIP"
 echo "macOS package: $ZIP"
