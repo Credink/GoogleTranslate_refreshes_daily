@@ -15,10 +15,35 @@ const (
 	EndMarker   = "# <<< GoogleTranslateHostsUpdater END"
 )
 
-// DefaultDomains are the hosts written for the chosen IP (IPFinder save_hosts).
+// DefaultDomains are always managed with the preferred IP (probe still uses
+// translate.googleapis.com only).
 var DefaultDomains = []string{
 	"translate.googleapis.com",
 	"translate-pa.googleapis.com",
+	"jnn-pa.googleapis.com",
+	"translate.google.com",
+	"translate.google.com.hk",
+}
+
+// LegacyDefaultDomains is the pre-expansion 2-domain default used for config migration.
+var LegacyDefaultDomains = []string{
+	"translate.googleapis.com",
+	"translate-pa.googleapis.com",
+}
+
+// RegionalDomains are optional ccTLD / regional frontends (settings toggle, default off).
+// Do not include www.translate.google.com or translate.google.cn.
+var RegionalDomains = []string{
+	"translate.google.com.tw",
+	"translate.google.com.sg",
+	"translate.google.com.my",
+	"translate.google.co.jp",
+	"translate.google.co.kr",
+	"translate.google.com.au",
+	"translate.google.de",
+	"translate.google.fr",
+	"translate.google.co.uk",
+	"translate.google.com.br",
 }
 
 // Path returns the OS hosts file path.

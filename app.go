@@ -8,6 +8,7 @@ import (
 
 	"GoogleTranslate_refreshes_daily/internal/autostart"
 	"GoogleTranslate_refreshes_daily/internal/elevate"
+	"GoogleTranslate_refreshes_daily/internal/hostsfile"
 	"GoogleTranslate_refreshes_daily/internal/schedule"
 	"GoogleTranslate_refreshes_daily/internal/state"
 	"GoogleTranslate_refreshes_daily/internal/tray"
@@ -289,10 +290,13 @@ type SettingsDTO struct {
 	ElevationLabel       string   `json:"elevation_label"`
 	ElevationExplain     string   `json:"elevation_explain"`
 	ElevationPlatform    string   `json:"elevation_platform"`
+	IncludeRegionalPack  bool     `json:"include_regional_pack"`
 	Workers              int      `json:"workers"`
 	TimeoutMS            int      `json:"timeout_ms"`
 	Repeat               int      `json:"repeat"`
 	Domains              []string `json:"domains"`
+	RegionalDomains      []string `json:"regional_domains"`
+	EffectiveDomains     []string `json:"effective_domains"`
 }
 
 func (a *App) GetSettings() SettingsDTO {
@@ -319,10 +323,13 @@ func (a *App) GetSettings() SettingsDTO {
 		ElevationLabel:       elevate.CurrentModeLabel(),
 		ElevationExplain:     elevate.ModeExplanation,
 		ElevationPlatform:    elevate.PlatformNotes(),
+		IncludeRegionalPack:  a.cfg.IncludeRegionalPack,
 		Workers:              a.cfg.Workers,
 		TimeoutMS:            a.cfg.TimeoutMS,
 		Repeat:               a.cfg.Repeat,
 		Domains:              a.cfg.Domains,
+		RegionalDomains:      append([]string{}, hostsfile.RegionalDomains...),
+		EffectiveDomains:     state.EffectiveDomains(a.cfg),
 	}
 }
 
@@ -338,11 +345,14 @@ func (a *App) SaveSettings(s SettingsDTO) string {
 	a.cfg.IncludeIPv6 = s.IncludeIPv6
 	a.cfg.LaunchAtLogin = s.LaunchAtLogin
 	a.cfg.RunAsAdmin = s.RunAsAdmin
+	a.cfg.IncludeRegionalPack = s.IncludeRegionalPack
 	a.cfg.Workers = s.Workers
 	a.cfg.TimeoutMS = s.TimeoutMS
 	a.cfg.Repeat = s.Repeat
 	if len(s.Domains) > 0 {
 		a.cfg.Domains = s.Domains
+	} else {
+		a.cfg.Domains = state.DefaultConfig().Domains
 	}
 	cfg := a.cfg
 	a.mu.Unlock()

@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
+
+	"GoogleTranslate_refreshes_daily/internal/hostsfile"
 )
 
 const appDirName = "GoogleTranslateHostsUpdater"
@@ -24,6 +27,7 @@ type Config struct {
 	IncludeIPv6          bool         `json:"include_ipv6"`
 	LaunchAtLogin        bool         `json:"launch_at_login"`
 	RunAsAdmin           bool         `json:"run_as_admin"` // prefer long-lived elevated process
+	IncludeRegionalPack  bool         `json:"include_regional_pack"`
 	Workers              int          `json:"workers"`
 	TimeoutMS            int          `json:"timeout_ms"`
 	Repeat               int          `json:"repeat"`
@@ -38,14 +42,37 @@ func DefaultConfig() Config {
 		IncludeIPv6:          false,
 		LaunchAtLogin:        false,
 		RunAsAdmin:           false, // default: normal user; elevate only for hosts write
+		IncludeRegionalPack:  false,
 		Workers:              32,
 		TimeoutMS:            800,
 		Repeat:               2,
-		Domains: []string{
-			"translate.googleapis.com",
-			"translate-pa.googleapis.com",
-		},
+		Domains:              cloneStrings(hostsfile.DefaultDomains),
 	}
+}
+
+// EffectiveDomains returns the hosts list to write: base Domains plus optional regional pack.
+func EffectiveDomains(c Config) []string {
+	base := c.Domains
+	if len(base) == 0 {
+		base = hostsfile.DefaultDomains
+	}
+	out := cloneStrings(base)
+	if !c.IncludeRegionalPack {
+		return out
+	}
+	seen := make(map[string]struct{}, len(out))
+	for _, d := range out {
+		seen[strings.ToLower(d)] = struct{}{}
+	}
+	for _, d := range hostsfile.RegionalDomains {
+		key := strings.ToLower(d)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, d)
+	}
+	return out
 }
 
 type Status string
@@ -127,6 +154,10 @@ func LoadConfig() (Config, error) {
 	}
 	if len(c.Domains) == 0 {
 		c.Domains = DefaultConfig().Domains
+	} else if sameDomainList(c.Domains, hostsfile.LegacyDefaultDomains) {
+		// Old 2-domain installs pick up the expanded default set on load.
+		c.Domains = DefaultConfig().Domains
+		_ = SaveConfig(c)
 	}
 	return c, nil
 }
@@ -175,4 +206,22 @@ func SaveState(s State) error {
 		return err
 	}
 	return os.WriteFile(path, b, 0644)
+}
+
+func cloneStrings(in []string) []string {
+	out := make([]string, len(in))
+	copy(out, in)
+	return out
+}
+
+func sameDomainList(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !strings.EqualFold(strings.TrimSpace(a[i]), strings.TrimSpace(b[i])) {
+			return false
+		}
+	}
+	return true
 }

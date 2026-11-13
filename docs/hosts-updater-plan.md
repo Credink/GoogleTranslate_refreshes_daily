@@ -4,7 +4,7 @@
 
 ## 已锁定决策
 
-1. **Hosts 域名：** `translate.googleapis.com` + `translate-pa.googleapis.com`
+1. **Hosts 域名（默认 5 条，同优选 IP）：** `translate.googleapis.com`、`translate-pa.googleapis.com`、`jnn-pa.googleapis.com`、`translate.google.com`、`translate.google.com.hk`。可选 `include_regional_pack`（默认关）追加 ccTLD 地区前端。探测仍仅 `translate.googleapis.com`。旧 2 域名配置加载时自动迁移到默认 5 条。详见 Context `docs/translate-domains.md`。
 2. **在线 IP 库：** 不定时同步；**仅当当前 hosts IP 探测失败**时拉取远程列表再测速选优（`allow_online_on_failure`，默认开）
 3. **IPv6：** 默认关；开启后每次检查先确认本机 IPv6 可用，否则本轮回退 IPv4；双栈都可用时**优先 IPv4**
 4. **许可：** **Apache-2.0**（NOTICE 致谢 IPFinder 思路，不引入 GPL 源码）

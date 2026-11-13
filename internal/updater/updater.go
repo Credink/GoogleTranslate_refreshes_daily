@@ -119,10 +119,7 @@ func Refresh(ctx context.Context, cfg state.Config, st state.State) (Report, sta
 	rep.BestIP = best
 	rep.Latency = bestLat.Round(time.Millisecond).String()
 
-	domains := cfg.Domains
-	if len(domains) == 0 {
-		domains = hostsfile.DefaultDomains
-	}
+	domains := state.EffectiveDomains(cfg)
 
 	content, err := hostsfile.Read(hostsPath)
 	if err != nil {

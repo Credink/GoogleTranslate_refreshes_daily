@@ -7,7 +7,7 @@
 
 | 项 | 默认 |
 |----|------|
-| Hosts 域名 | `translate.googleapis.com`、`translate-pa.googleapis.com` |
+| Hosts 域名 | 默认 5 条：API×2 + `jnn-pa` + `.com` + `.com.hk`；可选地区 ccTLD 包（默认关） |
 | 在线 IP 库 | **不定时**；仅当前 IP 探测失败且允许时拉取 |
 | IPv6 | **关**；开启后先测本机 IPv6，不可用则本轮 IPv4；双栈优先 IPv4 |
 | 开机自启 | **关**；设置页可开（Windows HKCU Run） |
@@ -79,7 +79,7 @@ wails build -nsis
 ### 浏览器仍打不开翻译？
 
 1. **关闭浏览器「安全 DNS / Secure DNS / DoH」**（Chrome：设置 → 隐私和安全 → 使用安全 DNS；Edge 类似）。DoH **绕过**系统 hosts。  
-2. 本工具只写入 **API** 域名：`translate.googleapis.com`、`translate-pa.googleapis.com`。网页入口请优先用 **[translate.google.cn](https://translate.google.cn/)**；`translate.google.com` 前端 IP/证书与 API 不同，**不要**把 API IP 硬绑到该域名。  
+2. 默认写入同一优选 IP 到：`translate.googleapis.com`、`translate-pa.googleapis.com`、`jnn-pa.googleapis.com`、`translate.google.com`、`translate.google.com.hk`（设置里可改域名列表；可选开启地区 ccTLD 包）。探测仍只验证 API 节点。请收藏 **[translate.google.com](https://translate.google.com/)** 或 **[translate.google.com.hk](https://translate.google.com.hk/)**；`translate.google.cn` 只是跳板，不是可用翻译页。  
 3. 可手动管理员执行：`ipconfig /flushdns`，再用 `Resolve-DnsName translate.googleapis.com` 确认结果为 hosts 中的 IP。
 
 ### 开机自启动

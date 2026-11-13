@@ -17,7 +17,7 @@ app.innerHTML = `
   <main class="shell">
     <header>
       <h1>谷歌翻译 Hosts 更新器</h1>
-      <p class="sub">按计划检测 translate.googleapis.com；仅在当前 IP 失效时拉取远程 IP 库并更新 hosts。</p>
+      <p class="sub">按计划探测 translate.googleapis.com；优选 IP 写入默认托管域名（含网页入口与 Chrome 内置翻译相关主机）；仅在当前 IP 失效时拉取远程 IP 库。</p>
     </header>
 
     <section class="panel">
@@ -65,6 +65,19 @@ app.innerHTML = `
         <span>开机自启动（登录时启动；Windows 写入当前用户 Run 项）</span>
       </label>
 
+      <div class="domains-block">
+        <label class="field">
+          <span>托管域名（每行一个；同一优选 IP）</span>
+          <textarea id="domainsList" rows="6" spellcheck="false"></textarea>
+        </label>
+        <label class="check">
+          <input id="includeRegional" type="checkbox" />
+          <span>额外写入地区前端（ccTLD，默认关）</span>
+        </label>
+        <p id="regionalHint" class="note"></p>
+        <p id="effectiveHint" class="note"></p>
+      </div>
+
       <div class="elevation-block">
         <label class="check">
           <input id="runAsAdmin" type="checkbox" />
@@ -86,7 +99,7 @@ app.innerHTML = `
 
     <footer>
       <p id="trayHint" class="foot"></p>
-      <p class="foot">写入 hosts 后会刷新系统 DNS 缓存。若浏览器仍不通：关闭 Chrome/Edge「使用安全 DNS」(DoH，会绕过 hosts)；本工具只管理 <code>translate.googleapis.com</code> / <code>translate-pa.googleapis.com</code>，网页入口可用 <code>translate.google.cn</code>（<code>translate.google.com</code> 前端不在管理范围）。</p>
+      <p class="foot">写入 hosts 后会刷新系统 DNS 缓存。若浏览器仍不通：关闭 Chrome/Edge「使用安全 DNS」(DoH，会绕过 hosts)。探测始终针对 <code>translate.googleapis.com</code>；默认还会写入 <code>jnn-pa.googleapis.com</code>、<code>translate.google.com</code>、<code>translate.google.com.hk</code> 等。请收藏 <code>translate.google.com</code> / <code>.com.hk</code>；勿依赖 <code>translate.google.cn</code>（仅跳板）。</p>
     </footer>
   </main>
 `;
@@ -110,6 +123,16 @@ function fillSettings(s) {
     document.getElementById('includeIPv6').checked = !!s.include_ipv6;
     document.getElementById('launchAtLogin').checked = !!s.launch_at_login;
     document.getElementById('runAsAdmin').checked = !!s.run_as_admin;
+    document.getElementById('includeRegional').checked = !!s.include_regional_pack;
+    const domains = Array.isArray(s.domains) ? s.domains : [];
+    document.getElementById('domainsList').value = domains.join('\n');
+    const regional = Array.isArray(s.regional_domains) ? s.regional_domains : [];
+    document.getElementById('regionalHint').textContent = regional.length
+        ? `地区包：${regional.join('、')}`
+        : '';
+    const effective = Array.isArray(s.effective_domains) ? s.effective_domains : domains;
+    document.getElementById('effectiveHint').textContent =
+        `实际写入 ${effective.length} 个域名（探测仍仅 translate.googleapis.com）。`;
     document.getElementById('elevationExplain').textContent =
         s.elevation_explain ||
         '管理员模式可长期静默更新 hosts（换 IP 时不再每次点授权）。普通模式更安全，但每次真正改 hosts 都需要点击授予权限。';
@@ -124,6 +147,13 @@ function fillSettings(s) {
         row.hidden = false;
     }
     document.getElementById('adminRelaunchRow').hidden = !s.needs_admin_relaunch;
+}
+
+function parseDomains(text) {
+    return String(text || '')
+        .split(/[\n,;]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
 }
 
 async function reload() {
@@ -170,10 +200,11 @@ document.getElementById('btnSave').addEventListener('click', async () => {
         include_ipv6: document.getElementById('includeIPv6').checked,
         launch_at_login: document.getElementById('launchAtLogin').checked,
         run_as_admin: wantAdmin,
+        include_regional_pack: document.getElementById('includeRegional').checked,
         workers: 32,
         timeout_ms: 800,
         repeat: 2,
-        domains: ['translate.googleapis.com', 'translate-pa.googleapis.com'],
+        domains: parseDomains(document.getElementById('domainsList').value),
     };
     try {
         const msg = await SaveSettings(payload);

@@ -13,10 +13,13 @@ export namespace main {
 	    elevation_label: string;
 	    elevation_explain: string;
 	    elevation_platform: string;
+	    include_regional_pack: boolean;
 	    workers: number;
 	    timeout_ms: number;
 	    repeat: number;
 	    domains: string[];
+	    regional_domains: string[];
+	    effective_domains: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new SettingsDTO(source);
@@ -36,10 +39,13 @@ export namespace main {
 	        this.elevation_label = source["elevation_label"];
 	        this.elevation_explain = source["elevation_explain"];
 	        this.elevation_platform = source["elevation_platform"];
+	        this.include_regional_pack = source["include_regional_pack"];
 	        this.workers = source["workers"];
 	        this.timeout_ms = source["timeout_ms"];
 	        this.repeat = source["repeat"];
 	        this.domains = source["domains"];
+	        this.regional_domains = source["regional_domains"];
+	        this.effective_domains = source["effective_domains"];
 	    }
 	}
 	export class StatusDTO {

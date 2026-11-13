@@ -139,12 +139,27 @@ dd {
   font-size: 0.9rem;
 }
 
+.domains-block,
 .elevation-block {
   margin: 12px 0 4px;
   padding: 10px 12px;
   border: 1px dashed var(--line);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.55);
+}
+
+.domains-block textarea {
+  font: inherit;
+  font-family: Consolas, "Cascadia Mono", "Sarasa Mono SC", monospace;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+  resize: vertical;
+  min-height: 110px;
+  width: 100%;
 }
 
 .elevation-explain {
