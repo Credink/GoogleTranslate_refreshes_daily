@@ -1,0 +1,2 @@
+# GoogleTranslate_refreshes_daily
+谷歌翻译因为拦截问题，总是要定期查找最优节点，手动设置hosts，做一个每日自动校验并更新hosts的工具，考虑到便于使用，做个GUI
