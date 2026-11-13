@@ -1,0 +1,21 @@
+Third-party acknowledgements
+============================
+
+IP discovery / availability-check approach
+------------------------------------------
+Inspired by GoodCoder666/GoogleTranslate_IPFinder
+  https://github.com/GoodCoder666/GoogleTranslate_IPFinder
+  License: GPL-3.0-or-later
+
+This repository does NOT include or vendor that project's source code.
+Probe concurrency, HTTPS template (`/translate_a/element.js`), SNI/Host usage,
+repeat/timeout defaults, and public IP-list URLs were reimplemented in Go for
+this application.
+
+IP candidate data
+-----------------
+Bundled seed IPs are a small snapshot derived from public lists associated with:
+  - GoodCoder666/gtdb — https://github.com/GoodCoder666/gtdb
+  - Optional online sync may also use Ponderfly/GoogleTranslateIpCheck lists
+
+Scan range credits noted by IPFinder: gscan_quic (antigng) IP ranges.
