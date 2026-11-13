@@ -15,7 +15,7 @@ app.innerHTML = `
   <main class="shell">
     <header>
       <h1>谷歌翻译 Hosts 更新器</h1>
-      <p class="sub">每日检测 translate.googleapis.com 可用 IP，并安全更新系统 hosts。</p>
+      <p class="sub">按计划检测 translate.googleapis.com；仅在当前 IP 失效时拉取远程 IP 库并更新 hosts。</p>
     </header>
 
     <section class="panel">
@@ -50,12 +50,12 @@ app.innerHTML = `
         <input id="intervalHours" type="number" min="1" max="168" value="24" />
       </label>
       <label class="check">
-        <input id="onlineSync" type="checkbox" checked />
-        <span>启动/刷新时在线同步 IP 库（gtdb 等）</span>
+        <input id="allowOnline" type="checkbox" checked />
+        <span>当前 IP 失效时，允许在线拉取 IP 库（不定时同步）</span>
       </label>
       <label class="check">
         <input id="includeIPv6" type="checkbox" />
-        <span>包含 IPv6（默认关闭，稳定性较差）</span>
+        <span>启用 IPv6（默认关；不可用时本轮自动回退 IPv4，双栈优先 IPv4）</span>
       </label>
       <div class="actions">
         <button id="btnSave" class="btn primary" type="button">保存设置</button>
@@ -84,7 +84,7 @@ function fillStatus(s) {
 function fillSettings(s) {
     document.getElementById('scheduleMode').value = s.schedule_mode || 'daily_midnight';
     document.getElementById('intervalHours').value = s.interval_hours || 24;
-    document.getElementById('onlineSync').checked = !!s.online_sync;
+    document.getElementById('allowOnline').checked = s.allow_online_on_failure !== false;
     document.getElementById('includeIPv6').checked = !!s.include_ipv6;
 }
 
@@ -97,7 +97,7 @@ async function reload() {
     fillStatus(status);
     fillSettings(settings);
     document.getElementById('trayHint').textContent =
-        `托盘菜单预留：${tray.refresh} / ${tray.settings} / ${tray.quit}。${tray.note || ''}`;
+        `托盘：${tray.refresh} / ${tray.settings} / ${tray.quit}。${tray.note || ''}`;
 }
 
 document.getElementById('btnReload').addEventListener('click', () => {
@@ -122,7 +122,7 @@ document.getElementById('btnSave').addEventListener('click', async () => {
     const payload = {
         schedule_mode: document.getElementById('scheduleMode').value,
         interval_hours: Number(document.getElementById('intervalHours').value) || 24,
-        online_sync: document.getElementById('onlineSync').checked,
+        allow_online_on_failure: document.getElementById('allowOnline').checked,
         include_ipv6: document.getElementById('includeIPv6').checked,
         workers: 64,
         timeout_ms: 1500,

@@ -19,7 +19,7 @@ export interface StatusDTO {
 export interface SettingsDTO {
   schedule_mode: string;
   interval_hours: number;
-  online_sync: boolean;
+  allow_online_on_failure: boolean;
   include_ipv6: boolean;
   workers: number;
   timeout_ms: number;

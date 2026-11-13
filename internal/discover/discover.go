@@ -68,7 +68,10 @@ func BuildPool(ctx context.Context, opt PoolOptions) ([]string, error) {
 	if opt.Online {
 		groups := opt.URLGroups
 		if len(groups) == 0 {
-			groups = DefaultIPv4URLGroups
+			groups = append([][]string{}, DefaultIPv4URLGroups...)
+			if opt.IncludeIPv6 {
+				groups = append(groups, DefaultIPv6URLGroups...)
+			}
 		}
 		timeout := opt.HTTPTimeout
 		if timeout <= 0 {

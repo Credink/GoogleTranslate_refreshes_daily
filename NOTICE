@@ -1,6 +1,9 @@
 Third-party acknowledgements
 ============================
 
+This product is licensed under the Apache License, Version 2.0.
+See the LICENSE file.
+
 IP discovery / availability-check approach
 ------------------------------------------
 Inspired by GoodCoder666/GoogleTranslate_IPFinder
@@ -9,8 +12,7 @@ Inspired by GoodCoder666/GoogleTranslate_IPFinder
 
 This repository does NOT include or vendor that project's source code.
 Probe concurrency, HTTPS template (`/translate_a/element.js`), SNI/Host usage,
-repeat/timeout defaults, and public IP-list URLs were reimplemented in Go for
-this application.
+repeat/timeout defaults, and public IP-list URLs were reimplemented in original Go.
 
 IP candidate data
 -----------------
@@ -19,3 +21,7 @@ Bundled seed IPs are a small snapshot derived from public lists associated with:
   - Optional online sync may also use Ponderfly/GoogleTranslateIpCheck lists
 
 Scan range credits noted by IPFinder: gscan_quic (antigng) IP ranges.
+
+System tray
+-----------
+github.com/energye/systray (and upstream getlantern/systray lineage) — see module licenses.

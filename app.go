@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -10,17 +9,21 @@ import (
 	"GoogleTranslate_refreshes_daily/internal/state"
 	"GoogleTranslate_refreshes_daily/internal/tray"
 	"GoogleTranslate_refreshes_daily/internal/updater"
+
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App is the Wails backend API.
 type App struct {
 	ctx context.Context
 
-	mu     sync.Mutex
-	cfg    state.Config
-	st     state.State
-	busy   bool
-	cancel context.CancelFunc
+	mu       sync.Mutex
+	cfg      state.Config
+	st       state.State
+	busy     bool
+	cancel   context.CancelFunc
+	trayIcon []byte
+	trayStop func()
 }
 
 func NewApp() *App {
@@ -36,11 +39,43 @@ func (a *App) startup(ctx context.Context) {
 	a.st = st
 	a.mu.Unlock()
 
-	// Missed-midnight / startup check
+	a.trayStop = tray.Start(tray.Hooks{
+		Icon: a.trayIcon,
+		OnRefresh: func() {
+			a.runRefresh(true)
+			a.pushTrayStatus()
+		},
+		OnShowSettings: func() {
+			wailsruntime.WindowShow(a.ctx)
+			wailsruntime.WindowUnminimise(a.ctx)
+		},
+		OnQuit: func() {
+			wailsruntime.Quit(a.ctx)
+		},
+		StatusProvider: func() string {
+			s := a.GetStatus()
+			return s.TrayLine
+		},
+	})
+
 	if schedule.NeedsCheck(time.Now(), cfg, st) {
-		go a.runRefresh(false)
+		go func() {
+			a.runRefresh(false)
+			a.pushTrayStatus()
+		}()
 	}
 	go a.scheduleLoop()
+}
+
+func (a *App) beforeClose(ctx context.Context) (prevent bool) {
+	// Hide to tray instead of quitting when user closes the window.
+	wailsruntime.WindowHide(ctx)
+	return true
+}
+
+func (a *App) pushTrayStatus() {
+	s := a.GetStatus()
+	tray.UpdateStatus(s.TrayLine)
 }
 
 func (a *App) scheduleLoop() {
@@ -61,6 +96,7 @@ func (a *App) scheduleLoop() {
 			a.mu.Unlock()
 			if schedule.NeedsCheck(time.Now(), cfg, st) {
 				a.runRefresh(false)
+				a.pushTrayStatus()
 			}
 		}
 	}
@@ -75,7 +111,11 @@ func (a *App) runRefresh(manual bool) updater.Report {
 	a.busy = true
 	cfg := a.cfg
 	st := a.st
-	ctx, cancel := context.WithTimeout(a.ctx, 10*time.Minute)
+	parent := a.ctx
+	if parent == nil {
+		parent = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(parent, 10*time.Minute)
 	a.cancel = cancel
 	a.mu.Unlock()
 
@@ -128,28 +168,28 @@ func (a *App) GetStatus() StatusDTO {
 }
 
 type SettingsDTO struct {
-	ScheduleMode  string   `json:"schedule_mode"`
-	IntervalHours int      `json:"interval_hours"`
-	OnlineSync    bool     `json:"online_sync"`
-	IncludeIPv6   bool     `json:"include_ipv6"`
-	Workers       int      `json:"workers"`
-	TimeoutMS     int      `json:"timeout_ms"`
-	Repeat        int      `json:"repeat"`
-	Domains       []string `json:"domains"`
+	ScheduleMode         string   `json:"schedule_mode"`
+	IntervalHours        int      `json:"interval_hours"`
+	AllowOnlineOnFailure bool     `json:"allow_online_on_failure"`
+	IncludeIPv6          bool     `json:"include_ipv6"`
+	Workers              int      `json:"workers"`
+	TimeoutMS            int      `json:"timeout_ms"`
+	Repeat               int      `json:"repeat"`
+	Domains              []string `json:"domains"`
 }
 
 func (a *App) GetSettings() SettingsDTO {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return SettingsDTO{
-		ScheduleMode:  string(a.cfg.ScheduleMode),
-		IntervalHours: a.cfg.IntervalHours,
-		OnlineSync:    a.cfg.OnlineSync,
-		IncludeIPv6:   a.cfg.IncludeIPv6,
-		Workers:       a.cfg.Workers,
-		TimeoutMS:     a.cfg.TimeoutMS,
-		Repeat:        a.cfg.Repeat,
-		Domains:       a.cfg.Domains,
+		ScheduleMode:         string(a.cfg.ScheduleMode),
+		IntervalHours:        a.cfg.IntervalHours,
+		AllowOnlineOnFailure: a.cfg.AllowOnlineOnFailure,
+		IncludeIPv6:          a.cfg.IncludeIPv6,
+		Workers:              a.cfg.Workers,
+		TimeoutMS:            a.cfg.TimeoutMS,
+		Repeat:               a.cfg.Repeat,
+		Domains:              a.cfg.Domains,
 	}
 }
 
@@ -161,7 +201,7 @@ func (a *App) SaveSettings(s SettingsDTO) string {
 		a.cfg.ScheduleMode = state.ModeDailyMidnight
 	}
 	a.cfg.IntervalHours = s.IntervalHours
-	a.cfg.OnlineSync = s.OnlineSync
+	a.cfg.AllowOnlineOnFailure = s.AllowOnlineOnFailure
 	a.cfg.IncludeIPv6 = s.IncludeIPv6
 	a.cfg.Workers = s.Workers
 	a.cfg.TimeoutMS = s.TimeoutMS
@@ -176,8 +216,8 @@ func (a *App) SaveSettings(s SettingsDTO) string {
 }
 
 func (a *App) RefreshNow() StatusDTO {
-	rep := a.runRefresh(true)
-	_ = rep
+	a.runRefresh(true)
+	a.pushTrayStatus()
 	return a.GetStatus()
 }
 
@@ -186,7 +226,7 @@ func (a *App) TrayMenuLabels() map[string]string {
 		"refresh":  tray.MenuLabels.Refresh,
 		"settings": tray.MenuLabels.Settings,
 		"quit":     tray.MenuLabels.Quit,
-		"note":     "系统托盘完整集成待后续版本；当前可用窗口按钮与 RefreshNow。",
+		"note":     "系统托盘已启用：可查看上次状态并立即刷新。关闭窗口会隐藏到托盘。",
 	}
 }
 
@@ -194,5 +234,10 @@ func (a *App) Quit() {
 	if a.cancel != nil {
 		a.cancel()
 	}
-	fmt.Println("quit requested")
+	if a.trayStop != nil {
+		a.trayStop()
+	}
+	if a.ctx != nil {
+		wailsruntime.Quit(a.ctx)
+	}
 }

@@ -3,6 +3,7 @@ package probe
 import (
 	"context"
 	"math/rand"
+	"net"
 	"sync"
 	"time"
 )
@@ -105,4 +106,32 @@ func (r SpeedtestResult) BestIP() string {
 		return ""
 	}
 	return r.Available[0].IP
+}
+
+// BestIPPreferV4 returns the best IPv4 when any IPv4 works; otherwise best IPv6.
+func (r SpeedtestResult) BestIPPreferV4() (ip string, latency time.Duration) {
+	var best4, best6 Result
+	var has4, has6 bool
+	for _, a := range r.Available {
+		parsed := net.ParseIP(a.IP)
+		if parsed == nil {
+			continue
+		}
+		if parsed.To4() != nil {
+			if !has4 || a.Latency < best4.Latency {
+				best4, has4 = a, true
+			}
+			continue
+		}
+		if !has6 || a.Latency < best6.Latency {
+			best6, has6 = a, true
+		}
+	}
+	if has4 {
+		return best4.IP, best4.Latency
+	}
+	if has6 {
+		return best6.IP, best6.Latency
+	}
+	return "", 0
 }

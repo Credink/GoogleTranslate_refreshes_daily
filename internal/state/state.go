@@ -18,26 +18,25 @@ const (
 )
 
 type Config struct {
-	ScheduleMode   ScheduleMode `json:"schedule_mode"`
-	IntervalHours  int          `json:"interval_hours"`
-	OnlineSync     bool         `json:"online_sync"`
-	IncludeIPv6    bool         `json:"include_ipv6"`
-	Workers        int          `json:"workers"`
-	TimeoutMS      int          `json:"timeout_ms"`
-	Repeat         int          `json:"repeat"`
-	Domains        []string     `json:"domains"`
-	RemoteURLNote  string       `json:"remote_url_note,omitempty"`
+	ScheduleMode         ScheduleMode `json:"schedule_mode"`
+	IntervalHours        int          `json:"interval_hours"`
+	AllowOnlineOnFailure bool         `json:"allow_online_on_failure"`
+	IncludeIPv6          bool         `json:"include_ipv6"`
+	Workers              int          `json:"workers"`
+	TimeoutMS            int          `json:"timeout_ms"`
+	Repeat               int          `json:"repeat"`
+	Domains              []string     `json:"domains"`
 }
 
 func DefaultConfig() Config {
 	return Config{
-		ScheduleMode:  ModeDailyMidnight,
-		IntervalHours: 24,
-		OnlineSync:    true,
-		IncludeIPv6:   false,
-		Workers:       64,
-		TimeoutMS:     1500,
-		Repeat:        3,
+		ScheduleMode:         ModeDailyMidnight,
+		IntervalHours:        24,
+		AllowOnlineOnFailure: true,
+		IncludeIPv6:          false,
+		Workers:              64,
+		TimeoutMS:            1500,
+		Repeat:               3,
 		Domains: []string{
 			"translate.googleapis.com",
 			"translate-pa.googleapis.com",
@@ -109,6 +108,21 @@ func LoadConfig() (Config, error) {
 	c := DefaultConfig()
 	if err := json.Unmarshal(b, &c); err != nil {
 		return DefaultConfig(), err
+	}
+	// Migrate deprecated online_sync → allow_online_on_failure when new key absent.
+	var raw map[string]json.RawMessage
+	if json.Unmarshal(b, &raw) == nil {
+		if _, hasNew := raw["allow_online_on_failure"]; !hasNew {
+			if old, ok := raw["online_sync"]; ok {
+				var v bool
+				if json.Unmarshal(old, &v) == nil {
+					c.AllowOnlineOnFailure = v
+				}
+			}
+		}
+	}
+	if len(c.Domains) == 0 {
+		c.Domains = DefaultConfig().Domains
 	}
 	return c, nil
 }
