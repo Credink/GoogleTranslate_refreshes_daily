@@ -56,24 +56,26 @@ powershell -ExecutionPolicy Bypass -File .\scripts\package-windows.ps1
 | 路径 | 说明 |
 |------|------|
 | `build/bin/GoogleTranslateHostsUpdater.exe` | 主程序（中间产物） |
-| `packages/*-portable.zip` | 便携包（最终发布目录） |
+| `packages/*-portable.zip` | Windows 便携包 |
 | `packages/*installer*.exe` | NSIS 安装包（需 makensis） |
+| `packages/*.dmg` | **macOS Apple Silicon** 磁盘映像 |
+| `packages/*.AppImage` | **Linux x86_64** 单文件包（**不是 DMG**） |
 
 ### Linux amd64 / macOS arm64
 
 GUI **需要对应平台 + CGO**，无法在 Windows 上交叉出可用托盘包。请用脚本或 CI：
 
 ```bash
-# 在 Linux 桌面 / ubuntu CI
+# 在 Linux 桌面 / ubuntu CI → packages/*.AppImage
 bash scripts/package-linux.sh
 
-# 在 Apple Silicon Mac / macos-14 CI
+# 在 Apple Silicon Mac / macos CI → packages/*.dmg
 bash scripts/package-darwin.sh
 ```
 
-推送 tag（如 `v0.1.2`）后，[`.github/workflows/release.yml`](.github/workflows/release.yml) 会在三平台构建并发布 Release 资源。
+**格式约定：** macOS 发 **`.dmg`**；Linux 发 **`.AppImage`**（DMG 仅为 macOS 格式，Linux 用 AppImage 作为对等的「单文件安装包」）。详见 [`packages/README.md`](packages/README.md)。
 
-最终 zip/tar 统一输出到仓库根目录 [`packages/`](packages/)（与 Release 资源同名约定）。
+推送 tag（如 `v0.1.3`）后，[`.github/workflows/release.yml`](.github/workflows/release.yml) 会在三平台构建并发布 Release 资源到 [`packages/`](packages/) 同名约定。
 
 ## 两种权限模式
 
@@ -137,5 +139,6 @@ bash scripts/package-darwin.sh
 ## 已知缺口
 
 - 本机无 NSIS 时安装包需另装 makensis  
-- macOS 公证 / DMG 未做；真机托盘细调留待硬件  
+- macOS 公证未做（`.dmg` 已产出）；真机托盘细调留待硬件  
+- Linux AppImage 未完整捆绑 WebKit，目标机仍需桌面依赖  
 - CIDR 深度扫描未做  

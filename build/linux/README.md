@@ -22,7 +22,9 @@ wails doctor
 bash scripts/package-linux.sh
 ```
 
-产物：`packages/GoogleTranslateHostsUpdater-v*-linux-amd64-*.tar.gz`
+产物：`packages/GoogleTranslateHostsUpdater-v*-linux-amd64-*.AppImage`
+
+> **DMG vs AppImage：** `.dmg` 是 macOS 磁盘映像，**不能**用于 Linux。本项目 Linux 发布格式为 **AppImage**（对等的单文件可执行包）。AppImage 未完整捆绑 WebKit；目标机仍需桌面 GTK/WebKitGTK。
 
 ## 限制
 

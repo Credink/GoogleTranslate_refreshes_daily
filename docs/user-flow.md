@@ -7,8 +7,8 @@
 | 平台 | 做法 |
 |------|------|
 | **Windows** | 解压便携 zip 运行 `GoogleTranslateHostsUpdater.exe`，或运行 NSIS 安装包 |
-| **Linux (amd64)** | 解压 Release 中的 linux 包，执行二进制；需桌面环境（托盘/WebView） |
-| **macOS (Apple Silicon)** | 打开 `.app`；首次若被拦截，在「系统设置 → 隐私与安全性」允许 |
+| **Linux (x86_64)** | 下载 **`.AppImage`**，`chmod +x` 后运行；需桌面环境（WebKitGTK）。**不是 DMG**（DMG 仅为 macOS） |
+| **macOS (Apple Silicon)** | 打开 **`.dmg`**，拖到「应用程序」；首次若被拦截，在「系统设置 → 隐私与安全性」允许 |
 
 关闭窗口 = **隐藏到托盘**；托盘「退出程序」才真正结束。托盘可：立即刷新 / 打开设置 / 退出。
 

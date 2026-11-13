@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to publish (e.g. v0.1.2). Leave empty to only build artifacts."
+        description: "Release tag to publish (e.g. v0.1.3). Leave empty to only build artifacts."
         required: false
         default: ""
 
@@ -15,7 +15,7 @@ permissions:
   contents: write
 
 env:
-  VERSION: "0.1.2"
+  VERSION: "0.1.3"
   GO_VERSION: "1.26.x"
   NODE_VERSION: "22"
 
@@ -37,6 +37,7 @@ jobs:
         shell: pwsh
         run: |
           $env:Path = "$(go env GOPATH)\bin;" + $env:Path
+          $env:VERSION = "${{ env.VERSION }}"
           powershell -ExecutionPolicy Bypass -File .\scripts\package-windows.ps1
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
@@ -66,10 +67,13 @@ jobs:
             libwebkit2gtk-4.0-dev \
             libayatana-appindicator3-dev \
             pkg-config \
-            build-essential
+            build-essential \
+            curl \
+            file \
+            desktop-file-utils
       - name: Install Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.1
-      - name: Package Linux
+      - name: Package Linux AppImage
         run: |
           export PATH="$(go env GOPATH)/bin:$PATH"
           export VERSION="${{ env.VERSION }}"
@@ -78,7 +82,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-amd64
-          path: packages/*-linux-amd64-*.tar.gz
+          path: packages/*-linux-amd64-*.AppImage
           if-no-files-found: error
 
   build-darwin:
@@ -96,35 +100,16 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - name: Install Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.1
-      - name: Package macOS
+      - name: Package macOS DMG
         run: |
           export PATH="$(go env GOPATH)/bin:$PATH"
           export VERSION="${{ env.VERSION }}"
-          # Prefer arm64 on Apple Silicon runners; fall back to native arch.
-          ARCH="$(uname -m)"
-          if [[ "$ARCH" == "arm64" ]]; then
-            bash scripts/package-darwin.sh
-          else
-            echo "Runner arch=$ARCH — building native darwin/$ARCH (arm64 preferred when available)"
-            # Temporary override: build native .app then zip with arm64-compatible naming only on arm64.
-            COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
-            BUILT="$(date -Iseconds)"
-            LD="-X main.BuildCommit=${COMMIT} -X main.BuildTime=${BUILT}"
-            wails build -platform "darwin/${ARCH}" -ldflags "$LD"
-            BIN_DIR="build/bin"
-            PKG_DIR="packages"
-            mkdir -p "$PKG_DIR"
-            APP_BUNDLE="$(find "$BIN_DIR" -maxdepth 2 -type d -name 'GoogleTranslateHostsUpdater.app' | head -n1)"
-            STAMP="$(date +%Y%m%d-%H%M)"
-            ZIP="$PKG_DIR/GoogleTranslateHostsUpdater-v${VERSION}-darwin-${ARCH}-${STAMP}.zip"
-            ditto -c -k --sequesterRsrc --keepParent "$APP_BUNDLE" "$ZIP"
-            echo "macOS package: $ZIP"
-          fi
+          bash scripts/package-darwin.sh
       - name: Upload Darwin artifact
         uses: actions/upload-artifact@v4
         with:
           name: darwin-app
-          path: packages/*-darwin-*.zip
+          path: packages/*-darwin-*.dmg
           if-no-files-found: warn
 
   publish:
@@ -153,7 +138,9 @@ jobs:
       - name: Flatten assets
         run: |
           mkdir -p dist
-          find release-assets -type f \( -name '*.zip' -o -name '*.tar.gz' -o -name '*installer*.exe' \) -print -exec cp -n {} dist/ \;
+          find release-assets -type f \( \
+            -name '*.zip' -o -name '*.tar.gz' -o -name '*.dmg' -o -name '*.AppImage' -o -name '*installer*.exe' \
+          \) -print -exec cp -n {} dist/ \;
           ls -la dist
           test -n "$(ls -A dist 2>/dev/null)" || { echo "no release assets"; exit 1; }
       - name: Publish GitHub Release
@@ -163,11 +150,17 @@ jobs:
           TAG="${{ steps.tag.outputs.name }}"
           NOTES="## 谷歌翻译 Hosts 更新器 ${TAG}
 
-          - **Windows amd64**：便携 zip（\`*-portable.zip\`）；若有 NSIS 则附带 installer
-          - **Linux amd64**：\`*-linux-amd64-*.tar.gz\`（需桌面 + WebKitGTK）
-          - **macOS**：\`*-darwin-*.zip\`（优先 Apple Silicon；未公证，首次需手动允许）
+          ### 资源格式
 
-          使用说明见仓库 \`docs/user-flow.md\` / README。"
+          | 平台 | 格式 |
+          |------|------|
+          | Windows amd64 | 便携 zip（\`*-portable.zip\`）；可选 NSIS installer |
+          | **macOS Apple Silicon** | **\`.dmg\`** |
+          | **Linux x86_64** | **\`.AppImage\`**（DMG 仅为 macOS 格式；Linux 用 AppImage 作为对等单文件包） |
+
+          - macOS：未公证；首次打开可能需「仍要打开」
+          - Linux AppImage：\`chmod +x\` 后运行；主机仍需桌面 WebKitGTK/GTK
+          - 使用说明：\`docs/user-flow.md\` / README / \`packages/README.md\`"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
           else

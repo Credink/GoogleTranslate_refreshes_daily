@@ -12,7 +12,7 @@
   "info": {
     "companyName": "Credink",
     "productName": "谷歌翻译 Hosts 更新器",
-    "productVersion": "0.1.2",
+    "productVersion": "0.1.3",
     "copyright": "Copyright Credink",
     "comments": "Google Translate hosts auto-updater"
   }
