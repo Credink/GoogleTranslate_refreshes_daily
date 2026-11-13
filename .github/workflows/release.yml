@@ -17,7 +17,7 @@ permissions:
 env:
   VERSION: "0.1.2"
   GO_VERSION: "1.26.x"
-  NODE_VERSION: "20"
+  NODE_VERSION: "22"
 
 jobs:
   build-windows:
@@ -48,7 +48,7 @@ jobs:
           if-no-files-found: error
 
   build-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -60,9 +60,10 @@ jobs:
       - name: Install Linux GUI deps
         run: |
           sudo apt-get update
+          # Wails v2.17 pkg-config requires webkit2gtk-4.0 (not only 4.1).
           sudo apt-get install -y \
             libgtk-3-dev \
-            libwebkit2gtk-4.1-dev \
+            libwebkit2gtk-4.0-dev \
             libayatana-appindicator3-dev \
             pkg-config \
             build-essential
@@ -81,7 +82,10 @@ jobs:
           if-no-files-found: error
 
   build-darwin:
-    runs-on: macos-14
+    # Apple Silicon preferred; continue-on-error so Win/Linux release still publishes
+    # if this host/org cannot schedule macOS runners.
+    runs-on: macos-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -92,22 +96,45 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - name: Install Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.1
-      - name: Package macOS arm64
+      - name: Package macOS
         run: |
           export PATH="$(go env GOPATH)/bin:$PATH"
           export VERSION="${{ env.VERSION }}"
-          bash scripts/package-darwin.sh
+          # Prefer arm64 on Apple Silicon runners; fall back to native arch.
+          ARCH="$(uname -m)"
+          if [[ "$ARCH" == "arm64" ]]; then
+            bash scripts/package-darwin.sh
+          else
+            echo "Runner arch=$ARCH — building native darwin/$ARCH (arm64 preferred when available)"
+            # Temporary override: build native .app then zip with arm64-compatible naming only on arm64.
+            COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+            BUILT="$(date -Iseconds)"
+            LD="-X main.BuildCommit=${COMMIT} -X main.BuildTime=${BUILT}"
+            wails build -platform "darwin/${ARCH}" -ldflags "$LD"
+            BIN_DIR="build/bin"
+            DIST_DIR="build/dist"
+            mkdir -p "$DIST_DIR"
+            APP_BUNDLE="$(find "$BIN_DIR" -maxdepth 2 -type d -name 'GoogleTranslateHostsUpdater.app' | head -n1)"
+            STAMP="$(date +%Y%m%d-%H%M)"
+            ZIP="$DIST_DIR/GoogleTranslateHostsUpdater-v${VERSION}-darwin-${ARCH}-${STAMP}.zip"
+            ditto -c -k --sequesterRsrc --keepParent "$APP_BUNDLE" "$ZIP"
+            echo "macOS package: $ZIP"
+          fi
       - name: Upload Darwin artifact
         uses: actions/upload-artifact@v4
         with:
-          name: darwin-arm64
-          path: build/dist/*-darwin-arm64-*.zip
-          if-no-files-found: error
+          name: darwin-app
+          path: build/dist/*-darwin-*.zip
+          if-no-files-found: warn
 
   publish:
     needs: [build-windows, build-linux, build-darwin]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.tag != '')
+    runs-on: ubuntu-22.04
+    if: |
+      always() &&
+      !cancelled() &&
+      (needs.build-windows.result == 'success' || needs.build-linux.result == 'success') &&
+      (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.tag != ''))
     steps:
       - uses: actions/checkout@v4
       - name: Resolve tag
@@ -122,22 +149,23 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: release-assets
+          merge-multiple: true
       - name: Flatten assets
         run: |
           mkdir -p dist
           find release-assets -type f \( -name '*.zip' -o -name '*.tar.gz' -o -name '*installer*.exe' \) -print -exec cp -n {} dist/ \;
           ls -la dist
+          test -n "$(ls -A dist 2>/dev/null)" || { echo "no release assets"; exit 1; }
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ env.VERSION }}
         run: |
           TAG="${{ steps.tag.outputs.name }}"
           NOTES="## 谷歌翻译 Hosts 更新器 ${TAG}
 
           - **Windows amd64**：便携 zip（\`*-portable.zip\`）；若有 NSIS 则附带 installer
           - **Linux amd64**：\`*-linux-amd64-*.tar.gz\`（需桌面 + WebKitGTK）
-          - **macOS arm64**：\`*-darwin-arm64-*.zip\`（Apple Silicon；未公证，首次需手动允许）
+          - **macOS**：\`*-darwin-*.zip\`（优先 Apple Silicon；未公证，首次需手动允许）
 
           使用说明见仓库 \`docs/user-flow.md\` / README。"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then

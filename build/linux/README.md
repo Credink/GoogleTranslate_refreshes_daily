@@ -15,8 +15,8 @@
 ```bash
 # Debian/Ubuntu 类依赖示例
 sudo apt-get update
-sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev
-# 若 4.1 不可用可试 libwebkit2gtk-4.0-dev
+sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev
+# Wails v2.17 的 pkg-config 需要 webkit2gtk-4.0；部分新发行版才有 4.1
 
 wails doctor
 bash scripts/package-linux.sh
