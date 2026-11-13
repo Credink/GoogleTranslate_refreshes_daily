@@ -8,7 +8,7 @@
 2. **在线 IP 库：** 不定时同步；**仅当当前 hosts IP 探测失败**时拉取远程列表再测速选优（`allow_online_on_failure`，默认开）
 3. **IPv6：** 默认关；开启后每次检查先确认本机 IPv6 可用，否则本轮回退 IPv4；双栈都可用时**优先 IPv4**
 4. **许可：** **Apache-2.0**（NOTICE 致谢 IPFinder 思路，不引入 GPL 源码）
-5. **Windows 安装包：** `wails build -nsis`（可选「开机自启动」组件）+ `scripts/package-windows.ps1` 产出便携 zip
+5. **安装包产物：** `scripts/package-*.{ps1,sh}` 与 CI 将最终 zip/tar 输出到仓库根目录 `packages/`（与 Release 资源同名）；Windows 另可选 NSIS
 6. **开机自启：** Windows HKCU Run；macOS LaunchAgent；Linux XDG `~/.config/autostart/*.desktop`；设置页 `launch_at_login`
 7. **macOS / Linux GUI：** 代码路径已齐；完整托盘验收需真机。Release 由 CI（`macos-14` / `ubuntu-latest`）构建（见 `build/darwin/README.md`、`build/linux/README.md`、`.github/workflows/release.yml`）
 8. **双权限模式：** 默认普通用户（按次 `--apply-hosts` 提权）；可选 `run_as_admin` 长期提权静默写 hosts。开启/关闭会尝试 relaunch；Windows 完整实现，macOS/Linux best-effort（降权常需手动）
