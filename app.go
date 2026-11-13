@@ -338,7 +338,7 @@ func (a *App) TrayMenuLabels() map[string]string {
 		"refresh":  tray.MenuLabels.Refresh,
 		"settings": tray.MenuLabels.Settings,
 		"quit":     tray.MenuLabels.Quit,
-		"note":     "系统托盘：左键显示窗口，右键打开菜单。关闭窗口隐藏到托盘；「退出程序」会结束进程。",
+		"note": "系统托盘：左键显示窗口，右键打开菜单。关闭窗口隐藏到托盘；「退出程序」会结束进程。浏览器请关闭「安全 DNS/DoH」，否则会绕过 hosts。",
 	}
 }
 

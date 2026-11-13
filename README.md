@@ -56,9 +56,15 @@ wails build -nsis
 | `build/bin/*-installer.exe` | NSIS 安装包（需 makensis） |
 | `build/dist/*-portable.zip` | 便携包 |
 
-关闭窗口会**隐藏到托盘**；托盘可「立即刷新 / 打开设置 / 退出」。写入 hosts 时若无权限，会通过 UAC 拉起同进程 `--apply-hosts` 助手。
+关闭窗口会**隐藏到托盘**；托盘可「立即刷新 / 打开设置 / 退出」。写入 hosts 时若无权限，会通过 UAC 拉起同进程 `--apply-hosts` 助手。成功写入后会**刷新系统 DNS 缓存**（Windows：`ipconfig /flushdns`，优先在提权助手中执行；macOS/Linux 为 best-effort）。
 
 配置目录：`%AppData%\GoogleTranslateHostsUpdater\`（`config.json` / `state.json`）。
+
+### 浏览器仍打不开翻译？
+
+1. **关闭浏览器「安全 DNS / Secure DNS / DoH」**（Chrome：设置 → 隐私和安全 → 使用安全 DNS；Edge 类似）。DoH **绕过**系统 hosts。  
+2. 本工具只写入 **API** 域名：`translate.googleapis.com`、`translate-pa.googleapis.com`。网页入口请优先用 **[translate.google.cn](https://translate.google.cn/)**；`translate.google.com` 前端 IP/证书与 API 不同，**不要**把 API IP 硬绑到该域名。  
+3. 可手动管理员执行：`ipconfig /flushdns`，再用 `Resolve-DnsName translate.googleapis.com` 确认结果为 hosts 中的 IP。
 
 ### 开机自启动
 

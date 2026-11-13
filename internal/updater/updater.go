@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"GoogleTranslate_refreshes_daily/internal/discover"
+	"GoogleTranslate_refreshes_daily/internal/dnsflush"
 	"GoogleTranslate_refreshes_daily/internal/elevate"
 	"GoogleTranslate_refreshes_daily/internal/hostsfile"
 	"GoogleTranslate_refreshes_daily/internal/netcheck"
@@ -141,6 +142,9 @@ func Refresh(ctx context.Context, cfg state.Config, st state.State) (Report, sta
 		st = persist(st, rep)
 		return rep, st
 	}
+	// Best-effort OS DNS cache flush (Windows: ipconfig /flushdns). Elevated
+	// --apply-hosts also flushes; this covers non-elevated writes.
+	dnsflush.AfterHostsWrite()
 
 	rep.Status = state.StatusUpdated
 	rep.Updated = true

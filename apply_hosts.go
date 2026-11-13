@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"GoogleTranslate_refreshes_daily/internal/dnsflush"
 	"GoogleTranslate_refreshes_daily/internal/hostsfile"
 )
 
@@ -21,6 +22,8 @@ func runApplyHosts(patchPath string) int {
 			return 2
 		}
 	}
+	// Elevated process can flush DNS on Windows where a normal user may not.
+	dnsflush.AfterHostsWrite()
 	_ = os.WriteFile(patchPath+".done", []byte("ok\n"), 0644)
 	return 0
 }

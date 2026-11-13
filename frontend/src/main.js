@@ -70,6 +70,7 @@ app.innerHTML = `
 
     <footer>
       <p id="trayHint" class="foot"></p>
+      <p class="foot">写入 hosts 后会刷新系统 DNS 缓存。若浏览器仍不通：关闭 Chrome/Edge「使用安全 DNS」(DoH，会绕过 hosts)；本工具只管理 <code>translate.googleapis.com</code> / <code>translate-pa.googleapis.com</code>，网页入口可用 <code>translate.google.cn</code>（<code>translate.google.com</code> 前端不在管理范围）。</p>
     </footer>
   </main>
 `;
