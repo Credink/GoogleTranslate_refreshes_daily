@@ -51,9 +51,32 @@ for candidate in "$ROOT/build/appicon.png" "$ROOT/build/darwin/icon.png"; do
     break
   fi
 done
+ICON_FOR_DEPLOY=""
 if [[ -n "$ICON_SRC" ]]; then
-  cp "$ICON_SRC" "$APPDIR/.DirIcon"
-  cp "$ICON_SRC" "$APPDIR/usr/share/icons/hicolor/256x256/apps/${DESKTOP_ID}.png"
+  # linuxdeploy only accepts fixed icon sizes (max 512); source appicon is often 1024.
+  ICON_FOR_DEPLOY="$STAGE/${DESKTOP_ID}-256.png"
+  mkdir -p "$STAGE"
+  if command -v convert >/dev/null 2>&1; then
+    convert "$ICON_SRC" -resize 256x256 "$ICON_FOR_DEPLOY"
+  elif command -v magick >/dev/null 2>&1; then
+    magick "$ICON_SRC" -resize 256x256 "$ICON_FOR_DEPLOY"
+  else
+    python3 - "$ICON_SRC" "$ICON_FOR_DEPLOY" <<'PY'
+import struct, zlib, sys
+src, dst = sys.argv[1], sys.argv[2]
+# Prefer Pillow when available; else keep a copied PNG only if already 256 (rare).
+try:
+    from PIL import Image
+    Image.open(src).convert("RGBA").resize((256, 256), Image.Resampling.LANCZOS).save(dst)
+except Exception as exc:
+    raise SystemExit(
+        "need ImageMagick `convert`/`magick` or Pillow to resize app icon for linuxdeploy "
+        f"(got {exc})"
+    )
+PY
+  fi
+  cp "$ICON_FOR_DEPLOY" "$APPDIR/.DirIcon"
+  cp "$ICON_FOR_DEPLOY" "$APPDIR/usr/share/icons/hicolor/256x256/apps/${DESKTOP_ID}.png"
   ln -sfn .DirIcon "$APPDIR/${DESKTOP_ID}.png"
 fi
 
@@ -205,8 +228,8 @@ LD_ARGS=(
   --desktop-file "$APPDIR/${DESKTOP_ID}.desktop"
   --plugin gtk
 )
-if [[ -n "$ICON_SRC" ]]; then
-  LD_ARGS+=(--icon-file "$ICON_SRC")
+if [[ -n "$ICON_FOR_DEPLOY" && -f "$ICON_FOR_DEPLOY" ]]; then
+  LD_ARGS+=(--icon-file "$ICON_FOR_DEPLOY")
 fi
 if ((${#EXTRA_LIBS[@]})); then
   LD_ARGS+=("${EXTRA_LIBS[@]}")

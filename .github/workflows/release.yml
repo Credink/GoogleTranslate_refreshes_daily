@@ -74,6 +74,8 @@ jobs:
             desktop-file-utils \
             dpkg-dev \
             python3 \
+            python3-pil \
+            imagemagick \
             libfuse2
       - name: Install Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.1
