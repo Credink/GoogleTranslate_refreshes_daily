@@ -62,6 +62,7 @@ jobs:
         run: |
           sudo apt-get update
           # Wails v2.17 pkg-config requires webkit2gtk-4.0 (not only 4.1).
+          # AppImage bundling (linuxdeploy + GTK plugin) also needs dpkg-dev / python3.
           sudo apt-get install -y \
             libgtk-3-dev \
             libwebkit2gtk-4.0-dev \
@@ -70,19 +71,30 @@ jobs:
             build-essential \
             curl \
             file \
-            desktop-file-utils
+            desktop-file-utils \
+            dpkg-dev \
+            python3 \
+            libfuse2
       - name: Install Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.1
       - name: Package Linux AppImage
         run: |
           export PATH="$(go env GOPATH)/bin:$PATH"
           export VERSION="${{ env.VERSION }}"
+          export APPIMAGE_EXTRACT_AND_RUN=1
           bash scripts/package-linux.sh
+          # Sanity: bundled AppImage should embed webkit (size >> bare Go binary).
+          APP="$(ls -1 packages/*-linux-amd64-*.AppImage | tail -n1)"
+          SIZE="$(wc -c <"$APP" | tr -d ' ')"
+          echo "AppImage=$APP bytes=$SIZE"
+          test "$SIZE" -gt 20000000
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
         with:
           name: linux-amd64
-          path: packages/*-linux-amd64-*.AppImage
+          path: |
+            packages/*-linux-amd64-*.AppImage
+            packages/.last-linux-appimage-libs.txt
           if-no-files-found: error
 
   build-darwin:
@@ -159,7 +171,7 @@ jobs:
           | **Linux x86_64** | **\`.AppImage\`**（DMG 仅为 macOS 格式；Linux 用 AppImage 作为对等单文件包） |
 
           - macOS：未公证；首次打开可能需「仍要打开」
-          - Linux AppImage：\`chmod +x\` 后运行；主机仍需桌面 WebKitGTK/GTK
+          - Linux AppImage：\`chmod +x\` 后运行；已捆绑 WebKitGTK/GTK/托盘库（仍需 glibc/显示服务/GPU 驱动/字体）
           - 使用说明：\`docs/user-flow.md\` / README / \`packages/README.md\`"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber

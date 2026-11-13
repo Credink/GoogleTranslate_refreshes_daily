@@ -13,10 +13,19 @@
 ## 本机打包
 
 ```bash
-# Debian/Ubuntu 类依赖示例
+# Debian/Ubuntu 22.04 类（Wails v2.17 需要 webkit2gtk-4.0 的 pkg-config）
 sudo apt-get update
-sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev
-# Wails v2.17 的 pkg-config 需要 webkit2gtk-4.0；部分新发行版才有 4.1
+sudo apt-get install -y \
+  libgtk-3-dev \
+  libwebkit2gtk-4.0-dev \
+  libayatana-appindicator3-dev \
+  pkg-config \
+  build-essential \
+  curl \
+  file \
+  desktop-file-utils \
+  dpkg-dev \
+  python3
 
 wails doctor
 bash scripts/package-linux.sh
@@ -24,10 +33,22 @@ bash scripts/package-linux.sh
 
 产物：`packages/GoogleTranslateHostsUpdater-v*-linux-amd64-*.AppImage`
 
-> **DMG vs AppImage：** `.dmg` 是 macOS 磁盘映像，**不能**用于 Linux。本项目 Linux 发布格式为 **AppImage**（对等的单文件可执行包）。AppImage 未完整捆绑 WebKit；目标机仍需桌面 GTK/WebKitGTK。
+> **DMG vs AppImage：** `.dmg` 是 macOS 磁盘映像，**不能**用于 Linux。本项目 Linux 发布格式为 **AppImage**。
+>
+> **自包含策略：** `scripts/package-linux.sh` 用 **linuxdeploy + linuxdeploy-plugin-gtk** 把 WebKitGTK/GTK/GLib/libsoup/cairo-pango 与托盘相关 `.so` 打进 AppImage，并按 Wails 方式重定位 `WebKit*Process` 路径。GPU 驱动、桌面会话、字体、FUSE、glibc 仍用系统。详见 [`packages/README.md`](../../packages/README.md)。
+
+## 运行
+
+```bash
+chmod +x packages/GoogleTranslateHostsUpdater-v*-linux-amd64-*.AppImage
+./packages/GoogleTranslateHostsUpdater-v*-linux-amd64-*.AppImage
+# 无 FUSE：
+APPIMAGE_EXTRACT_AND_RUN=1 ./packages/GoogleTranslateHostsUpdater-v*-linux-amd64-*.AppImage
+```
 
 ## 限制
 
 - 需要 **Linux 主机 + CGO**（GTK/WebKit）；无法在 Windows 上交叉编译完整 GUI。
+- CI 基线 **Ubuntu 22.04 + webkit2gtk-4.0**（与 Ubuntu 24.04 默认的 4.1 SONAME 不同；发布包以内嵌 4.0 为准）。
 - 发行版差异大：无托盘宿主时菜单可能不可见，请用主窗口操作。
-- 完整桌面验收需真机；CI（`ubuntu-latest`）负责产出 Release 资源。
+- 完整桌面验收需真机；CI（`ubuntu-22.04`）负责产出 Release / artifact。

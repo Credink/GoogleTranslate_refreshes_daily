@@ -34,7 +34,7 @@ IP 探测思路参考 [GoogleTranslate_IPFinder](https://github.com/GoodCoder666
 - Node.js + npm
 - Wails CLI：`go install github.com/wailsapp/wails/v2/cmd/wails@latest`
 - Windows：WebView2；（可选）NSIS
-- Linux：GTK3 + WebKitGTK + AppIndicator（见 `build/linux/README.md`）
+- Linux：GTK3 + WebKitGTK + AppIndicator（构建见 `build/linux/README.md`；发布 AppImage 已捆绑 WebKit/GTK，见 `packages/README.md`）
 - macOS：Xcode CLT / Apple Silicon（见 `build/darwin/README.md`）
 
 ```powershell
