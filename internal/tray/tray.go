@@ -1,4 +1,4 @@
-// Package tray runs a real system tray via energye/systray (Wails-friendly).
+// Package tray runs a system tray via energye/systray (Wails-friendly external loop).
 package tray
 
 import (
@@ -11,7 +11,11 @@ import (
 
 // Hooks are callbacks into the Wails app (must be thread-safe).
 type Hooks struct {
-	Icon           []byte
+	// Icon is the platform tray image (.ico on Windows, .png elsewhere).
+	Icon []byte
+	// TemplateIcon is a macOS menu-bar template (black + transparent PNG).
+	// Ignored on Windows/Linux when empty; when set on darwin, SetTemplateIcon is used.
+	TemplateIcon []byte
 	OnRefresh      func()
 	OnShowSettings func()
 	OnQuit         func()
@@ -56,10 +60,10 @@ func Start(h Hooks) (stop func()) {
 }
 
 func onReady(h Hooks) {
-	if len(h.Icon) > 0 {
-		systray.SetIcon(h.Icon)
-	}
-	systray.SetTitle("谷歌翻译 Hosts")
+	applyIcon(h)
+
+	// macOS: short title next to menu-bar icon; Windows ignores SetTitle.
+	systray.SetTitle(platformTitle())
 	systray.SetTooltip("谷歌翻译 Hosts 更新器")
 
 	statusItem = systray.AddMenuItem("上次: 尚未检查", "最近一次检查结果")
@@ -87,12 +91,7 @@ func onReady(h Hooks) {
 		systray.Quit()
 	})
 
-	systray.SetOnClick(func(menu systray.IMenu) {
-		_ = menu.ShowMenu()
-	})
-	systray.SetOnRClick(func(menu systray.IMenu) {
-		_ = menu.ShowMenu()
-	})
+	wireClicks()
 
 	if h.StatusProvider != nil {
 		go func() {

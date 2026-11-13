@@ -1,6 +1,6 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "GoogleTranslate_refreshes_daily",
+  "name": "GoogleTranslateHostsUpdater",
   "outputfilename": "GoogleTranslateHostsUpdater",
   "frontend:install": "npm install",
   "frontend:build": "npm run build",
@@ -9,5 +9,12 @@
   "author": {
     "name": "Credink",
     "email": ""
+  },
+  "info": {
+    "companyName": "Credink",
+    "productName": "谷歌翻译 Hosts 更新器",
+    "productVersion": "0.1.0",
+    "copyright": "Copyright Credink",
+    "comments": "Google Translate hosts auto-updater"
   }
 }

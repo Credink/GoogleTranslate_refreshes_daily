@@ -22,6 +22,7 @@ type Config struct {
 	IntervalHours        int          `json:"interval_hours"`
 	AllowOnlineOnFailure bool         `json:"allow_online_on_failure"`
 	IncludeIPv6          bool         `json:"include_ipv6"`
+	LaunchAtLogin        bool         `json:"launch_at_login"`
 	Workers              int          `json:"workers"`
 	TimeoutMS            int          `json:"timeout_ms"`
 	Repeat               int          `json:"repeat"`
@@ -34,6 +35,7 @@ func DefaultConfig() Config {
 		IntervalHours:        24,
 		AllowOnlineOnFailure: true,
 		IncludeIPv6:          false,
+		LaunchAtLogin:        false,
 		Workers:              64,
 		TimeoutMS:            1500,
 		Repeat:               3,

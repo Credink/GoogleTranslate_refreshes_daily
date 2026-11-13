@@ -10,6 +10,7 @@
 | Hosts 域名 | `translate.googleapis.com`、`translate-pa.googleapis.com` |
 | 在线 IP 库 | **不定时**；仅当前 IP 探测失败且允许时拉取 |
 | IPv6 | **关**；开启后先测本机 IPv6，不可用则本轮 IPv4；双栈优先 IPv4 |
+| 开机自启 | **关**；设置页可开（Windows HKCU Run） |
 | 许可 | Apache-2.0（`LICENSE` + `NOTICE`） |
 
 IP 探测思路参考 [GoogleTranslate_IPFinder](https://github.com/GoodCoder666/GoogleTranslate_IPFinder)（**不复制其 GPL 源码**）。
@@ -20,12 +21,13 @@ IP 探测思路参考 [GoogleTranslate_IPFinder](https://github.com/GoodCoder666
 - Node.js + npm
 - Wails CLI：`go install github.com/wailsapp/wails/v2/cmd/wails@latest`
 - WebView2
+- （可选）[NSIS](https://nsis.sourceforge.io/)：`makensis` 用于生成安装包
 
 ```powershell
 wails doctor
 ```
 
-## 运行
+## 运行 / 打包
 
 ```powershell
 cd d:\Code\Go\GoogleTranslate_refreshes_daily
@@ -36,22 +38,47 @@ wails dev
 # 测试
 go test ./...
 
-# 构建
+# 仅构建 exe
 wails build
+
+# 构建 exe + 便携 zip +（若有 NSIS）安装包
+powershell -ExecutionPolicy Bypass -File .\scripts\package-windows.ps1
+
+# 或单独生成 NSIS 安装包
+wails build -nsis
 ```
 
-产物：`build/bin/GoogleTranslateHostsUpdater.exe`。  
+产物：
+
+| 路径 | 说明 |
+|------|------|
+| `build/bin/GoogleTranslateHostsUpdater.exe` | 主程序 |
+| `build/bin/*-installer.exe` | NSIS 安装包（需 makensis） |
+| `build/dist/*-portable.zip` | 便携包 |
+
 关闭窗口会**隐藏到托盘**；托盘可「立即刷新 / 打开设置 / 退出」。写入 hosts 时若无权限，会通过 UAC 拉起同进程 `--apply-hosts` 助手。
 
 配置目录：`%AppData%\GoogleTranslateHostsUpdater\`（`config.json` / `state.json`）。
 
+### 开机自启动
+
+1. **安装时：** NSIS 组件勾选「开机自启动（当前用户）」  
+2. **设置页：** 勾选「开机自启动」→ 保存（写入 `HKCU\...\Run\GoogleTranslateHostsUpdater`）  
+3. 卸载安装包或取消勾选并保存即可清除
+
+## macOS（无本机 Mac 时的说明）
+
+- 代码已按 darwin 路径对齐：模板托盘图标、`SetTemplateIcon`、LaunchAgent 自启、Wails `Mac` 选项（见 `build/darwin/`）。
+- **完整菜单栏托盘 GUI 验收需要真机 Mac**；Windows 上无法做有意义的 darwin CGO/托盘交叉验证。
+
 ## 文档
 
 - [`docs/hosts-updater-plan.md`](docs/hosts-updater-plan.md)
+- [`build/darwin/README.md`](build/darwin/README.md)
 - [`NOTICE`](NOTICE) / [`LICENSE`](LICENSE)
 
 ## 已知缺口
 
-- macOS 上 energye/systray 与 Wails 可能冲突（Windows 优先验证）
-- 安装包 / 自动启动项未做
+- 本机若未装 NSIS，需另装后再跑 `wails build -nsis`（脚本会回退到便携 zip）
+- macOS 真机托盘 / 公证 / DMG 未做
 - CIDR 深度扫描未做

@@ -57,6 +57,10 @@ app.innerHTML = `
         <input id="includeIPv6" type="checkbox" />
         <span>启用 IPv6（默认关；不可用时本轮自动回退 IPv4，双栈优先 IPv4）</span>
       </label>
+      <label class="check" id="autostartRow">
+        <input id="launchAtLogin" type="checkbox" />
+        <span>开机自启动（登录时启动；Windows 写入当前用户 Run 项）</span>
+      </label>
       <div class="actions">
         <button id="btnSave" class="btn primary" type="button">保存设置</button>
       </div>
@@ -86,6 +90,13 @@ function fillSettings(s) {
     document.getElementById('intervalHours').value = s.interval_hours || 24;
     document.getElementById('allowOnline').checked = s.allow_online_on_failure !== false;
     document.getElementById('includeIPv6').checked = !!s.include_ipv6;
+    document.getElementById('launchAtLogin').checked = !!s.launch_at_login;
+    const row = document.getElementById('autostartRow');
+    if (s.autostart_supported === false) {
+        row.hidden = true;
+    } else {
+        row.hidden = false;
+    }
 }
 
 async function reload() {
@@ -124,6 +135,7 @@ document.getElementById('btnSave').addEventListener('click', async () => {
         interval_hours: Number(document.getElementById('intervalHours').value) || 24,
         allow_online_on_failure: document.getElementById('allowOnline').checked,
         include_ipv6: document.getElementById('includeIPv6').checked,
+        launch_at_login: document.getElementById('launchAtLogin').checked,
         workers: 64,
         timeout_ms: 1500,
         repeat: 3,

@@ -59,12 +59,16 @@ ManifestDPIAware true
 !insertmacro MUI_PAGE_WELCOME # Welcome to the installer page.
 # !insertmacro MUI_PAGE_LICENSE "resources\eula.txt" # Adds a EULA page to the installer
 !insertmacro MUI_PAGE_DIRECTORY # In which folder install page.
+!insertmacro MUI_PAGE_COMPONENTS # Optional components (autostart).
 !insertmacro MUI_PAGE_INSTFILES # Installing page.
+!define MUI_FINISHPAGE_RUN "$INSTDIR\${PRODUCT_EXECUTABLE}"
+!define MUI_FINISHPAGE_RUN_TEXT "启动谷歌翻译 Hosts 更新器"
 !insertmacro MUI_PAGE_FINISH # Finished installation page.
 
 !insertmacro MUI_UNPAGE_INSTFILES # Uinstalling page
 
-!insertmacro MUI_LANGUAGE "English" # Set the Language of the installer
+!insertmacro MUI_LANGUAGE "SimpChinese"
+!insertmacro MUI_LANGUAGE "English"
 
 ## The following two statements can be used to sign the installer and the uninstaller. The path to the binaries are provided in %1
 #!uninstfinalize 'signtool --file "%1"'
@@ -87,7 +91,8 @@ Function .onInit
    !insertmacro wails.checkArchitecture
 FunctionEnd
 
-Section
+Section "核心程序" SecCore
+    SectionIn RO
     !insertmacro wails.setShellContext
 
     !insertmacro wails.webview2runtime
@@ -105,8 +110,24 @@ Section
     !insertmacro wails.writeUninstaller
 SectionEnd
 
+Section "开机自启动（当前用户）" SecAutostart
+    ; HKCU Run — no admin required for this value even when installer elevates.
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "GoogleTranslateHostsUpdater" '"$INSTDIR\${PRODUCT_EXECUTABLE}"'
+SectionEnd
+
+LangString DESC_SecCore ${LANG_SIMPCHINESE} "安装主程序与快捷方式"
+LangString DESC_SecAutostart ${LANG_SIMPCHINESE} "登录 Windows 时自动启动（当前用户）"
+LangString DESC_SecCore ${LANG_ENGLISH} "Install application and shortcuts"
+LangString DESC_SecAutostart ${LANG_ENGLISH} "Start at Windows logon (current user)"
+!insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
+    !insertmacro MUI_DESCRIPTION_TEXT ${SecCore} $(DESC_SecCore)
+    !insertmacro MUI_DESCRIPTION_TEXT ${SecAutostart} $(DESC_SecAutostart)
+!insertmacro MUI_FUNCTION_DESCRIPTION_END
+
 Section "uninstall"
     !insertmacro wails.setShellContext
+
+    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "GoogleTranslateHostsUpdater"
 
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
 

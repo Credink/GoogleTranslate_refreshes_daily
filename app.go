@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"GoogleTranslate_refreshes_daily/internal/autostart"
 	"GoogleTranslate_refreshes_daily/internal/schedule"
 	"GoogleTranslate_refreshes_daily/internal/state"
 	"GoogleTranslate_refreshes_daily/internal/tray"
@@ -17,13 +18,14 @@ import (
 type App struct {
 	ctx context.Context
 
-	mu       sync.Mutex
-	cfg      state.Config
-	st       state.State
-	busy     bool
-	cancel   context.CancelFunc
-	trayIcon []byte
-	trayStop func()
+	mu               sync.Mutex
+	cfg              state.Config
+	st               state.State
+	busy             bool
+	cancel           context.CancelFunc
+	trayIcon         []byte
+	trayTemplateIcon []byte
+	trayStop         func()
 }
 
 func NewApp() *App {
@@ -40,7 +42,8 @@ func (a *App) startup(ctx context.Context) {
 	a.mu.Unlock()
 
 	a.trayStop = tray.Start(tray.Hooks{
-		Icon: a.trayIcon,
+		Icon:         a.trayIcon,
+		TemplateIcon: a.trayTemplateIcon,
 		OnRefresh: func() {
 			a.runRefresh(true)
 			a.pushTrayStatus()
@@ -57,6 +60,11 @@ func (a *App) startup(ctx context.Context) {
 			return s.TrayLine
 		},
 	})
+
+	// Re-apply persisted launch-at-login preference (safe if already registered).
+	if cfg.LaunchAtLogin && autostart.Supported() {
+		_ = autostart.Enable()
+	}
 
 	if schedule.NeedsCheck(time.Now(), cfg, st) {
 		go func() {
@@ -172,6 +180,8 @@ type SettingsDTO struct {
 	IntervalHours        int      `json:"interval_hours"`
 	AllowOnlineOnFailure bool     `json:"allow_online_on_failure"`
 	IncludeIPv6          bool     `json:"include_ipv6"`
+	LaunchAtLogin        bool     `json:"launch_at_login"`
+	AutostartSupported   bool     `json:"autostart_supported"`
 	Workers              int      `json:"workers"`
 	TimeoutMS            int      `json:"timeout_ms"`
 	Repeat               int      `json:"repeat"`
@@ -181,11 +191,20 @@ type SettingsDTO struct {
 func (a *App) GetSettings() SettingsDTO {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	launch := a.cfg.LaunchAtLogin
+	if autostart.Supported() {
+		if enabled, err := autostart.IsEnabled(); err == nil {
+			launch = enabled
+			a.cfg.LaunchAtLogin = enabled
+		}
+	}
 	return SettingsDTO{
 		ScheduleMode:         string(a.cfg.ScheduleMode),
 		IntervalHours:        a.cfg.IntervalHours,
 		AllowOnlineOnFailure: a.cfg.AllowOnlineOnFailure,
 		IncludeIPv6:          a.cfg.IncludeIPv6,
+		LaunchAtLogin:        launch,
+		AutostartSupported:   autostart.Supported(),
 		Workers:              a.cfg.Workers,
 		TimeoutMS:            a.cfg.TimeoutMS,
 		Repeat:               a.cfg.Repeat,
@@ -203,6 +222,7 @@ func (a *App) SaveSettings(s SettingsDTO) string {
 	a.cfg.IntervalHours = s.IntervalHours
 	a.cfg.AllowOnlineOnFailure = s.AllowOnlineOnFailure
 	a.cfg.IncludeIPv6 = s.IncludeIPv6
+	a.cfg.LaunchAtLogin = s.LaunchAtLogin
 	a.cfg.Workers = s.Workers
 	a.cfg.TimeoutMS = s.TimeoutMS
 	a.cfg.Repeat = s.Repeat
@@ -211,6 +231,11 @@ func (a *App) SaveSettings(s SettingsDTO) string {
 	}
 	if err := state.SaveConfig(a.cfg); err != nil {
 		return "保存失败: " + err.Error()
+	}
+	if autostart.Supported() {
+		if err := autostart.Apply(s.LaunchAtLogin); err != nil {
+			return "设置已保存，但开机自启更新失败: " + err.Error()
+		}
 	}
 	return "设置已保存"
 }
