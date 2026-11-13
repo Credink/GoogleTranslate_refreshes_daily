@@ -10,6 +10,7 @@ package chromeproxy
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -83,7 +84,20 @@ func ConfigureBypassOpts(domains []string, opt Options) Report {
 	hits := DiscoverOmegaExtensions()
 	rep.Found = len(hits)
 	if len(hits) == 0 {
-		rep.Message = "未检测到 ZeroOmega / SwitchyOmega 的 Chrome/Edge 配置（请确认已安装；其他代理插件需手动设置 DIRECT/绕过）"
+		diag := DiagnoseDiscovery()
+		rep.Message = formatNotFoundMessage(diag)
+		if len(diag.RootsExisting) > 0 {
+			rep.Details = append(rep.Details, "已找到浏览器配置目录:")
+			rep.Details = append(rep.Details, diag.RootsExisting...)
+		} else {
+			rep.Details = append(rep.Details, "未找到任何 Chrome/Chromium/Brave/Edge 用户数据目录")
+			if diag.HomeDir != "" {
+				rep.Details = append(rep.Details, "探测 home: "+diag.HomeDir)
+			}
+		}
+		if len(diag.ProfileDirs) > 0 {
+			rep.Details = append(rep.Details, "已扫描配置档: "+strings.Join(shortPaths(diag.ProfileDirs, 6), "; "))
+		}
 		return rep
 	}
 
@@ -160,4 +174,28 @@ func shortID(id string) string {
 		return id
 	}
 	return id[:6] + "…"
+}
+
+func formatNotFoundMessage(diag DiscoveryDiagnostics) string {
+	base := "未检测到 ZeroOmega / SwitchyOmega 的扩展存储（Local Extension Settings）"
+	if len(diag.RootsExisting) == 0 {
+		return base + "：未找到 Chrome/Chromium/Brave/Edge 配置目录。请确认浏览器已登录运行过，或使用 Flatpak/Snap 时已打开过扩展页；其他代理插件需手动设 DIRECT/绕过"
+	}
+	if len(diag.ProfileDirs) == 0 {
+		return base + "：已找到浏览器目录但无 Default/Profile 配置档"
+	}
+	return base + "：已扫描 " + itoa(len(diag.ProfileDirs)) + " 个配置档。请安装 ZeroOmega（Chrome 商店 ID pfneded… / Edge 商店 dmaldh…），完全退出浏览器后点「配置代理插件绕过」；其他代理插件需手动设 DIRECT/绕过"
+}
+
+func shortPaths(paths []string, max int) []string {
+	if max <= 0 || len(paths) <= max {
+		return paths
+	}
+	out := append([]string{}, paths[:max]...)
+	out = append(out, "…(+"+itoa(len(paths)-max)+")")
+	return out
+}
+
+func itoa(n int) string {
+	return strconv.Itoa(n)
 }

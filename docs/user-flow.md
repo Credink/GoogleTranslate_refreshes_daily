@@ -69,11 +69,11 @@
 
 本工具会（best-effort、幂等）：
 
-1. 扫描 Chrome/Edge 的 ZeroOmega / SwitchyOmega LevelDB
+1. 扫描 Chrome/Chromium/Brave/Edge（含 Linux Flatpak/Snap、macOS Application Support）下 ZeroOmega / SwitchyOmega 的 LevelDB
 2. 已正确则**不写盘**；仅缺失或 `ranslate` 等笔误才修补
-3. 界面圆形感叹号悬停可见中文说明；也可点「配置代理插件绕过」
+3. 界面圆形感叹号悬停可见中文说明；也可点「配置代理插件绕过」；未找到时会列出已扫描的浏览器目录
 
-限制：浏览器占用 LevelDB 时请先退出；写入后需重启浏览器；不覆盖非 Omega 类扩展。
+限制：浏览器占用 LevelDB 时请先退出；写入后需重启浏览器；不覆盖非 Omega 类扩展。Linux/macOS 路径与手动步骤见 README「Hosts ≠ 代理路径」。
 
 推荐心智模型：
 

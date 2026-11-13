@@ -112,6 +112,16 @@ bash scripts/package-darwin.sh
 
 限制：浏览器占用 DB 时请先退出；写入后重启浏览器；不覆盖非 Omega 扩展。
 
+#### Linux / macOS 手动核对（自动配置失败时）
+
+1. 安装 **ZeroOmega**（Chrome 商店 ID `pfnededegaaopdmhkdmcofjmoldfiped`；Edge 商店 `dmaldhchmoafliphkijbfhaomcgglmgd`）或旧版 SwitchyOmega；打开过一次扩展设置以生成存储。
+2. **完全退出** Chrome/Chromium/Brave/Edge（托盘图标也退出），再在本工具点「配置代理插件绕过」。
+3. 工具会扫描常见用户数据根（含 `Default` / `Profile *`）：
+   - **Linux：** `~/.config/google-chrome`、`google-chrome-stable`、`chromium`、`BraveSoftware/Brave-Browser`、`microsoft-edge`；以及 Flatpak `~/.var/app/…`、Snap `~/snap/…/common/…`
+   - **macOS：** `~/Library/Application Support/Google/Chrome`（含 Beta/Canary）、`Chromium`、`Microsoft Edge`、`BraveSoftware/Brave-Browser`
+4. 情景模式：托管 5 域规则 → **`direct`**（放在宽规则 `*google*` 之前）；或 FixedProfile **bypassList**。
+5. 勿用 `sudo` 整进程跑本工具（会找错 `~` / 托盘异常）；写 hosts 仅按次 `pkexec`（Linux）或管理员提示（macOS）。
+
 ### 浏览器仍打不开翻译？
 
 1. **关闭安全 DNS / DoH**（绕过 hosts）  
@@ -140,6 +150,5 @@ bash scripts/package-darwin.sh
 ## 已知缺口
 
 - 本机无 NSIS 时安装包需另装 makensis  
-- macOS 公证未做（`.dmg` 已产出）；真机托盘细调留待硬件  
-- Linux AppImage 未完整捆绑 WebKit，目标机仍需桌面依赖  
+- macOS 公证未做（`.dmg` 已产出）；首次打开可能需「仍要打开」；真机托盘细调留待硬件  
 - CIDR 深度扫描未做  
