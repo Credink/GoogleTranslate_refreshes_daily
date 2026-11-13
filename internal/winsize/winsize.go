@@ -2,17 +2,19 @@
 // screen work area (logical pixels — DPI-aware on Windows/macOS/Linux).
 package winsize
 
+import "fmt"
+
 // Fallback used when screen metrics are unavailable.
 const (
 	FallbackWidth  = 540
-	FallbackHeight = 820
+	FallbackHeight = 920
 	AbsMinWidth    = 420
-	AbsMinHeight   = 560
+	AbsMinHeight   = 640
 	AbsMaxWidth    = 960
-	AbsMaxHeight   = 1280
+	AbsMaxHeight   = 1400
 	// Preferred content-fit size for the settings UI at 100% scale.
 	ContentWidth  = 540
-	ContentHeight = 820
+	ContentHeight = 920
 )
 
 // Size is a window geometry suggestion.
@@ -24,8 +26,8 @@ type Size struct {
 }
 
 // Fit returns width/height/min sizes for a screen work area in logical pixels.
-// Uses a fraction of available space, prefers content-fit when the display allows,
-// and clamps to absolute min/max so common DPI setups are not cropped.
+// Uses most of the available height so the settings form fits; clamps to the
+// work area so small / high-DPI laptops are not cropped by an oversized frame.
 func Fit(screenW, screenH int) Size {
 	if screenW <= 0 {
 		screenW = 1280
@@ -34,38 +36,40 @@ func Fit(screenW, screenH int) Size {
 		screenH = 800
 	}
 
-	// Fractions of the work area (logical). Height-biased: form is taller than wide.
-	w := int(float64(screenW) * 0.36)
-	h := int(float64(screenH) * 0.82)
-
-	// Prefer content-fit when the screen is large enough.
-	if screenW >= ContentWidth+48 && w < ContentWidth {
-		w = ContentWidth
+	// Prefer content-fit; otherwise take most of the work area.
+	w := ContentWidth
+	h := ContentHeight
+	if screenW < ContentWidth+40 {
+		w = int(float64(screenW) * 0.92)
 	}
-	if screenH >= ContentHeight+72 && h < ContentHeight {
-		h = ContentHeight
+	if screenH < ContentHeight+80 {
+		h = int(float64(screenH) * 0.92)
 	}
 
-	maxW := int(float64(screenW) * 0.92)
-	maxH := int(float64(screenH) * 0.90)
-	if maxW < AbsMinWidth {
+	maxW := int(float64(screenW) * 0.95)
+	maxH := int(float64(screenH) * 0.94)
+	if maxW < 1 {
 		maxW = screenW
 	}
-	if maxH < AbsMinHeight {
+	if maxH < 1 {
 		maxH = screenH
 	}
 
-	w = clamp(w, AbsMinWidth, min(AbsMaxWidth, maxW))
-	h = clamp(h, AbsMinHeight, min(AbsMaxHeight, maxH))
+	loW := AbsMinWidth
+	if loW > maxW {
+		loW = maxW
+	}
+	loH := AbsMinHeight
+	if loH > maxH {
+		loH = maxH
+	}
 
-	minW := clamp(int(float64(screenW)*0.28), AbsMinWidth, w)
-	minH := clamp(int(float64(screenH)*0.48), AbsMinHeight, h)
-	if minW > w {
-		minW = w
-	}
-	if minH > h {
-		minH = h
-	}
+	w = clamp(w, loW, min(AbsMaxWidth, maxW))
+	h = clamp(h, loH, min(AbsMaxHeight, maxH))
+
+	// Keep mins reachable on the chosen size; allow user resize down a bit.
+	minW := clamp(AbsMinWidth, loW, w)
+	minH := clamp(AbsMinHeight, loH, h)
 
 	return Size{Width: w, Height: h, MinWidth: minW, MinHeight: minH}
 }
@@ -78,6 +82,12 @@ func Fallback() Size {
 		MinWidth:  AbsMinWidth,
 		MinHeight: AbsMinHeight,
 	}
+}
+
+// Describe is a short log line for the chosen geometry.
+func Describe(sz Size, screenW, screenH int) string {
+	return fmt.Sprintf("window=%dx%d min=%dx%d screen=%dx%d",
+		sz.Width, sz.Height, sz.MinWidth, sz.MinHeight, screenW, screenH)
 }
 
 func clamp(v, lo, hi int) int {

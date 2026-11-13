@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"sync"
 	"time"
 
@@ -36,7 +37,13 @@ func NewApp() *App {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	log.Printf("app: startup build=%s", BuildInfo())
 	a.applyScreenAwareWindowSize()
+	// Screen metrics can be incomplete on the first OnStartup tick; re-fit shortly after.
+	go func() {
+		time.Sleep(350 * time.Millisecond)
+		a.applyScreenAwareWindowSize()
+	}()
 
 	cfg, _ := state.LoadConfig()
 	st, _ := state.LoadState()
@@ -134,6 +141,7 @@ func (a *App) applyScreenAwareWindowSize() {
 		return
 	}
 	sz := winsize.Fallback()
+	sw, sh := 0, 0
 	if screens, err := wailsruntime.ScreenGetAll(a.ctx); err == nil && len(screens) > 0 {
 		chosen := screens[0]
 		for _, s := range screens {
@@ -145,12 +153,15 @@ func (a *App) applyScreenAwareWindowSize() {
 				chosen = s
 			}
 		}
-		sw, sh := chosen.Size.Width, chosen.Size.Height
+		sw, sh = chosen.Size.Width, chosen.Size.Height
 		if sw <= 0 || sh <= 0 {
 			sw, sh = chosen.Width, chosen.Height
 		}
 		sz = winsize.Fit(sw, sh)
+	} else if err != nil {
+		log.Printf("app: ScreenGetAll failed: %v — using fallback", err)
 	}
+	log.Printf("app: %s", winsize.Describe(sz, sw, sh))
 	wailsruntime.WindowSetMinSize(a.ctx, sz.MinWidth, sz.MinHeight)
 	wailsruntime.WindowSetSize(a.ctx, sz.Width, sz.Height)
 	wailsruntime.WindowCenter(a.ctx)
@@ -329,6 +340,11 @@ func (a *App) TrayMenuLabels() map[string]string {
 		"quit":     tray.MenuLabels.Quit,
 		"note":     "系统托盘：左键显示窗口，右键打开菜单。关闭窗口隐藏到托盘；「退出程序」会结束进程。",
 	}
+}
+
+// GetBuildInfo returns the baked commit/time for verifying the running binary.
+func (a *App) GetBuildInfo() string {
+	return BuildInfo()
 }
 
 func (a *App) Quit() {

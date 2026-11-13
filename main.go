@@ -2,8 +2,11 @@ package main
 
 import (
 	"embed"
+	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"runtime"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -15,10 +18,53 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// Injected at link time: -ldflags "-X main.BuildCommit=... -X main.BuildTime=..."
+var (
+	BuildCommit = "unknown"
+	BuildTime   = "unknown"
+)
+
+// BuildInfo returns a short baked identity string for logs / verification.
+func BuildInfo() string {
+	return fmt.Sprintf("%s %s/%s commit=%s built=%s",
+		"GoogleTranslateHostsUpdater", runtime.GOOS, runtime.GOARCH, BuildCommit, BuildTime)
+}
+
+// setupFileLog mirrors logs to %AppData%\GoogleTranslateHostsUpdater\app.log
+// so windowsgui builds remain diagnosable without a console.
+func setupFileLog() {
+	base, err := os.UserConfigDir()
+	if err != nil {
+		return
+	}
+	dir := filepath.Join(base, "GoogleTranslateHostsUpdater")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return
+	}
+	f, err := os.OpenFile(filepath.Join(dir, "app.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return
+	}
+	// windowsgui builds have no usable stderr; write file-only.
+	log.SetOutput(f)
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+}
+
 func main() {
+	// energye/systray locks the importing OS thread in init(); undo that so
+	// Wails can own the main thread while tray.Start locks a dedicated one.
+	runtime.UnlockOSThread()
+
+	if len(os.Args) >= 2 && os.Args[1] == "--version" {
+		fmt.Println(BuildInfo())
+		return
+	}
 	if len(os.Args) >= 3 && os.Args[1] == "--apply-hosts" {
 		os.Exit(runApplyHosts(os.Args[2]))
 	}
+
+	setupFileLog()
+	log.Printf("main: %s", BuildInfo())
 
 	app := NewApp()
 	app.trayIcon = trayIcon
@@ -29,9 +75,9 @@ func main() {
 	opts := &options.App{
 		Title:     "谷歌翻译 Hosts 更新器",
 		Width:     540,
-		Height:    820,
+		Height:    920,
 		MinWidth:  420,
-		MinHeight: 560,
+		MinHeight: 640,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

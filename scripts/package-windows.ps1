@@ -20,11 +20,22 @@ if (-not (Test-Path $Exe)) {
     throw "missing $Exe"
 }
 
-# Portable zip (always)
-$Zip = Join-Path $DistDir "GoogleTranslateHostsUpdater-windows-amd64-portable.zip"
+# Portable zip with version + date so users do not reopen a stale archive.
+$stamp = Get-Date -Format "yyyyMMdd-HHmm"
+$ver = "0.1.1"
+$ZipName = "GoogleTranslateHostsUpdater-v$ver-windows-amd64-$stamp-portable.zip"
+$Zip = Join-Path $DistDir $ZipName
 if (Test-Path $Zip) { Remove-Item $Zip -Force }
 Compress-Archive -Path $Exe -DestinationPath $Zip -Force
 Write-Host "Portable zip: $Zip"
+
+$DesktopZip = Join-Path $env:USERPROFILE "Desktop\GoogleTranslateHostsUpdater-portable.zip"
+try {
+    Copy-Item $Zip $DesktopZip -Force
+    Write-Host "Desktop copy: $DesktopZip"
+} catch {
+    Write-Warning "Could not copy zip to Desktop: $_"
+}
 
 # NSIS installer when makensis is available
 $makensis = Get-Command makensis -ErrorAction SilentlyContinue

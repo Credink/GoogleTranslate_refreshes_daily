@@ -7,6 +7,7 @@ import {
     SaveSettings,
     RefreshNow,
     TrayMenuLabels,
+    GetBuildInfo,
 } from '../wailsjs/go/main/App';
 
 const app = document.querySelector('#app');
@@ -100,15 +101,17 @@ function fillSettings(s) {
 }
 
 async function reload() {
-    const [status, settings, tray] = await Promise.all([
+    const [status, settings, tray, build] = await Promise.all([
         GetStatus(),
         GetSettings(),
         TrayMenuLabels(),
+        GetBuildInfo().catch(() => ''),
     ]);
     fillStatus(status);
     fillSettings(settings);
+    const buildNote = build ? ` 构建：${build}` : '';
     document.getElementById('trayHint').textContent =
-        `托盘：${tray.show || '显示窗口'} / ${tray.refresh} / ${tray.settings} / ${tray.quit}。${tray.note || ''}`;
+        `托盘：${tray.show || '显示窗口'} / ${tray.refresh} / ${tray.settings} / ${tray.quit}。${tray.note || ''}${buildNote}`;
 }
 
 document.getElementById('btnReload').addEventListener('click', () => {

@@ -1,8 +1,13 @@
-// Package tray runs a system tray via energye/systray (Wails-friendly external loop).
+// Package tray runs a system tray via energye/systray.
+// On Windows the tray MUST own a dedicated LockOSThread + message pump;
+// RunWithExternalLoop's nativeStart pumps GetMessage on a random goroutine
+// while the tray HWND was created on another thread — clicks are silently dropped.
 package tray
 
 import (
 	"fmt"
+	"log"
+	"runtime"
 	"sync"
 	"time"
 
@@ -51,14 +56,31 @@ var MenuLabels = struct {
 	Quit:     "退出程序",
 }
 
-// Start launches the tray with an external loop suitable for Wails OnStartup.
-// Call the returned stop function on shutdown if needed.
+// Start launches the tray on a dedicated OS thread with its own Win32 message
+// pump (systray.Run). Call the returned stop function on shutdown.
 func Start(h Hooks) (stop func()) {
-	start, end := systray.RunWithExternalLoop(func() {
-		onReady(h)
-	}, func() {})
-	start()
-	return end
+	var once sync.Once
+	stopped := make(chan struct{})
+
+	go func() {
+		// HWND + GetMessage must stay on one OS thread for the tray lifetime.
+		runtime.LockOSThread()
+		log.Printf("tray: starting dedicated message loop (GOMAXPROCS=%d)", runtime.GOMAXPROCS(0))
+		systray.Run(func() {
+			onReady(h)
+		}, func() {
+			once.Do(func() { close(stopped) })
+		})
+	}()
+
+	return func() {
+		systray.Quit()
+		select {
+		case <-stopped:
+		case <-time.After(2 * time.Second):
+			log.Printf("tray: stop timed out waiting for message loop exit")
+		}
+	}
 }
 
 func onReady(h Hooks) {
@@ -78,31 +100,28 @@ func onReady(h Hooks) {
 	systray.AddSeparator()
 	mQuit := systray.AddMenuItem(MenuLabels.Quit, "结束程序（不只是隐藏到托盘）")
 
-	showWindow := func() {
-		if h.OnShowSettings != nil {
-			h.OnShowSettings()
+	// energye invokes Click / OnClick on the Win32 pump thread. Never call
+	// Wails runtime APIs synchronously here — that deadlocks the pump.
+	dispatch := func(fn func()) {
+		if fn == nil {
+			return
 		}
+		go fn()
 	}
 
-	mShow.Click(func() {
-		showWindow()
-	})
-	mRefresh.Click(func() {
-		if h.OnRefresh != nil {
-			go h.OnRefresh()
-		}
-	})
-	mSettings.Click(func() {
-		showWindow()
-	})
-	mQuit.Click(func() {
-		// OnQuit must tear down tray + Wails; do not only systray.Quit (process would linger).
-		if h.OnQuit != nil {
-			go h.OnQuit()
-		}
-	})
+	showWindow := func() {
+		dispatch(h.OnShowSettings)
+	}
+
+	mShow.Click(showWindow)
+	mRefresh.Click(func() { dispatch(h.OnRefresh) })
+	mSettings.Click(showWindow)
+	mQuit.Click(func() { dispatch(h.OnQuit) })
 
 	wireClicks(showWindow)
+
+	log.Printf("tray: menu ready (%s / %s / %s / %s)",
+		MenuLabels.Show, MenuLabels.Refresh, MenuLabels.Settings, MenuLabels.Quit)
 
 	if h.StatusProvider != nil {
 		go func() {

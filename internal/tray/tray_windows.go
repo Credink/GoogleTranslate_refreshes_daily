@@ -14,24 +14,20 @@ func applyIcon(h Hooks) {
 	}
 }
 
-// wireClicks: Windows left-click restores the window; right-click opens the tray menu.
+// wireClicks: Windows left/double-click restore the window.
+// Do NOT SetOnRClick — energye then defaults to ShowMenu on right-click,
+// which is more reliable than a custom handler that can race the pump.
 func wireClicks(onLeftClick func()) {
 	systray.SetOnClick(func(menu systray.IMenu) {
-		_ = menu // menu available; left-click restores UI instead of popping the menu
+		_ = menu
 		if onLeftClick != nil {
-			onLeftClick()
+			onLeftClick() // already dispatches via go in onReady
 		}
 	})
 	systray.SetOnDClick(func(menu systray.IMenu) {
 		_ = menu
 		if onLeftClick != nil {
 			onLeftClick()
-		}
-	})
-	// Explicit RClick handler required: once set, energye will not auto-show the menu.
-	systray.SetOnRClick(func(menu systray.IMenu) {
-		if menu != nil {
-			_ = menu.ShowMenu()
 		}
 	})
 }
