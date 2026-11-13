@@ -7,6 +7,12 @@ export namespace main {
 	    include_ipv6: boolean;
 	    launch_at_login: boolean;
 	    autostart_supported: boolean;
+	    run_as_admin: boolean;
+	    is_elevated: boolean;
+	    needs_admin_relaunch: boolean;
+	    elevation_label: string;
+	    elevation_explain: string;
+	    elevation_platform: string;
 	    workers: number;
 	    timeout_ms: number;
 	    repeat: number;
@@ -24,6 +30,12 @@ export namespace main {
 	        this.include_ipv6 = source["include_ipv6"];
 	        this.launch_at_login = source["launch_at_login"];
 	        this.autostart_supported = source["autostart_supported"];
+	        this.run_as_admin = source["run_as_admin"];
+	        this.is_elevated = source["is_elevated"];
+	        this.needs_admin_relaunch = source["needs_admin_relaunch"];
+	        this.elevation_label = source["elevation_label"];
+	        this.elevation_explain = source["elevation_explain"];
+	        this.elevation_platform = source["elevation_platform"];
 	        this.workers = source["workers"];
 	        this.timeout_ms = source["timeout_ms"];
 	        this.repeat = source["repeat"];

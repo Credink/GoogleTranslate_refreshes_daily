@@ -22,6 +22,10 @@ export function RefreshNow() {
   return window['go']['main']['App']['RefreshNow']();
 }
 
+export function RelaunchAsAdmin() {
+  return window['go']['main']['App']['RelaunchAsAdmin']();
+}
+
 export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
 }

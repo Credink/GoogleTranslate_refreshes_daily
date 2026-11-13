@@ -139,6 +139,20 @@ dd {
   font-size: 0.9rem;
 }
 
+.elevation-block {
+  margin: 12px 0 4px;
+  padding: 10px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.elevation-explain {
+  margin-top: 4px;
+  color: var(--ink);
+  font-size: 0.84rem;
+}
+
 .note, .foot {
   margin: 8px 0 0;
   color: var(--muted);

@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"GoogleTranslate_refreshes_daily/internal/elevate"
+
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -61,6 +63,11 @@ func main() {
 	}
 	if len(os.Args) >= 3 && os.Args[1] == "--apply-hosts" {
 		os.Exit(runApplyHosts(os.Args[2]))
+	}
+	if len(os.Args) >= 3 && os.Args[1] == "--elevated-relaunch" {
+		// Signal the unelevated parent that UAC/pkexec succeeded and we started.
+		elevate.MarkRelaunchDone(os.Args[2])
+		// Fall through to normal GUI startup.
 	}
 
 	setupFileLog()

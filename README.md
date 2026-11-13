@@ -11,6 +11,7 @@
 | 在线 IP 库 | **不定时**；仅当前 IP 探测失败且允许时拉取 |
 | IPv6 | **关**；开启后先测本机 IPv6，不可用则本轮 IPv4；双栈优先 IPv4 |
 | 开机自启 | **关**；设置页可开（Windows HKCU Run） |
+| 权限模式 | **默认普通用户**；写 hosts 时按次提权。可选「以管理员身份运行」长期静默更新 |
 | 许可 | Apache-2.0（`LICENSE` + `NOTICE`） |
 
 IP 探测思路参考 [GoogleTranslate_IPFinder](https://github.com/GoodCoder666/GoogleTranslate_IPFinder)（**不复制其 GPL 源码**）。
@@ -56,7 +57,22 @@ wails build -nsis
 | `build/bin/*-installer.exe` | NSIS 安装包（需 makensis） |
 | `build/dist/*-portable.zip` | 便携包 |
 
-关闭窗口会**隐藏到托盘**；托盘可「立即刷新 / 打开设置 / 退出」。写入 hosts 时若无权限，会通过 UAC 拉起同进程 `--apply-hosts` 助手。成功写入后会**刷新系统 DNS 缓存**（Windows：`ipconfig /flushdns`，优先在提权助手中执行；macOS/Linux 为 best-effort）。
+关闭窗口会**隐藏到托盘**；托盘可「立即刷新 / 打开设置 / 退出」。
+
+### 两种权限模式
+
+| 模式 | 行为 |
+|------|------|
+| **普通用户（默认）** | 日常以非管理员运行；真正改 hosts（+ flushdns）时再弹 UAC / 系统授权 |
+| **管理员模式（可选）** | 设置页勾选「以管理员身份运行」→ 保存后提权重启；之后换 IP 可长期静默写 hosts |
+
+- 管理员模式可长期静默更新 hosts（换 IP 时不再每次点授权）
+- 普通模式更安全，但每次真正改 hosts 都需要点击授予权限
+- 偏好保存在 `config.json` 的 `run_as_admin`；启动时若勾了管理员但当前未提权，会自动尝试提权重启（可取消授权并继续普通运行）
+- **Windows**：提权用 `ShellExecute runas`；关闭管理员模式时尝试用关联令牌降权重启；失败则请完全退出后普通再开
+- **macOS / Linux**：提权分别为 osascript / pkexec 的 best-effort；降权通常需手动退出后普通再开
+
+写入 hosts 时若无权限，会通过 UAC 拉起同进程 `--apply-hosts` 助手。成功写入后会**刷新系统 DNS 缓存**（Windows：`ipconfig /flushdns`，优先在提权助手中执行；macOS/Linux 为 best-effort）。
 
 配置目录：`%AppData%\GoogleTranslateHostsUpdater\`（`config.json` / `state.json`）。
 

@@ -11,6 +11,7 @@
 5. **Windows 安装包：** `wails build -nsis`（可选「开机自启动」组件）+ `scripts/package-windows.ps1` 产出便携 zip
 6. **Windows 开机自启：** HKCU Run 值 `GoogleTranslateHostsUpdater`；设置页 `launch_at_login`；卸载时清除
 7. **macOS 托盘：** 仅做 build-tag / 模板图标 / 代码路径对齐；**无 Mac 硬件时不做完整 GUI 托盘验收**（见 `build/darwin/README.md`）
+8. **双权限模式：** 默认普通用户（按次 `--apply-hosts` 提权）；可选 `run_as_admin` 长期提权静默写 hosts。开启/关闭会尝试 relaunch；Windows 完整实现，macOS/Linux best-effort（降权常需手动）
 
 ## 探测摘要
 
@@ -31,6 +32,12 @@ powershell -ExecutionPolicy Bypass -File .\scripts\package-windows.ps1
 ## macOS 限制
 
 本环境无 Mac：darwin 托盘用 `SetTemplateIcon` + 短标题结构化；全量 `wails`/托盘 GUI 验证留待真机。
+
+## 权限模式（GUI）
+
+- 设置页开关旁中文说明：管理员可长期静默更新；普通模式更安全但每次改 hosts 需授权
+- 启动：`run_as_admin && !elevated` → 自动提权重启（握手文件防 UAC 取消误退出）
+- Windows 降权：`TokenLinkedToken` + `CreateProcessAsUser`；失败则提示手动重启
 
 ## 后续
 

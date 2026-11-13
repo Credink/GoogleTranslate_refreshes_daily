@@ -23,6 +23,7 @@ type Config struct {
 	AllowOnlineOnFailure bool         `json:"allow_online_on_failure"`
 	IncludeIPv6          bool         `json:"include_ipv6"`
 	LaunchAtLogin        bool         `json:"launch_at_login"`
+	RunAsAdmin           bool         `json:"run_as_admin"` // prefer long-lived elevated process
 	Workers              int          `json:"workers"`
 	TimeoutMS            int          `json:"timeout_ms"`
 	Repeat               int          `json:"repeat"`
@@ -36,6 +37,7 @@ func DefaultConfig() Config {
 		AllowOnlineOnFailure: true,
 		IncludeIPv6:          false,
 		LaunchAtLogin:        false,
+		RunAsAdmin:           false, // default: normal user; elevate only for hosts write
 		Workers:              32,
 		TimeoutMS:            800,
 		Repeat:               2,

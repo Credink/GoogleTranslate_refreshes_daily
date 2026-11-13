@@ -12,6 +12,8 @@ export function Quit():Promise<void>;
 
 export function RefreshNow():Promise<main.StatusDTO>;
 
+export function RelaunchAsAdmin():Promise<string>;
+
 export function SaveSettings(arg1:main.SettingsDTO):Promise<string>;
 
 export function TrayMenuLabels():Promise<Record<string, string>>;

@@ -6,6 +6,7 @@ import {
     GetSettings,
     SaveSettings,
     RefreshNow,
+    RelaunchAsAdmin,
     TrayMenuLabels,
     GetBuildInfo,
 } from '../wailsjs/go/main/App';
@@ -29,6 +30,7 @@ app.innerHTML = `
         <div><dt>延迟</dt><dd id="lastLatency">—</dd></div>
         <div><dt>下次计划</dt><dd id="nextRun">—</dd></div>
         <div><dt>托盘摘要</dt><dd id="trayLine">—</dd></div>
+        <div><dt>权限模式</dt><dd id="elevationStatus">—</dd></div>
       </dl>
       <div class="actions">
         <button id="btnRefresh" class="btn primary" type="button">立即刷新</button>
@@ -62,6 +64,20 @@ app.innerHTML = `
         <input id="launchAtLogin" type="checkbox" />
         <span>开机自启动（登录时启动；Windows 写入当前用户 Run 项）</span>
       </label>
+
+      <div class="elevation-block">
+        <label class="check">
+          <input id="runAsAdmin" type="checkbox" />
+          <span>以管理员身份运行（可选）</span>
+        </label>
+        <p id="elevationExplain" class="note elevation-explain"></p>
+        <p id="elevationLabel" class="note"></p>
+        <p id="elevationPlatform" class="note"></p>
+        <div class="actions" id="adminRelaunchRow" hidden>
+          <button id="btnRelaunchAdmin" class="btn" type="button">立即以管理员身份重启</button>
+        </div>
+      </div>
+
       <div class="actions">
         <button id="btnSave" class="btn primary" type="button">保存设置</button>
       </div>
@@ -93,12 +109,21 @@ function fillSettings(s) {
     document.getElementById('allowOnline').checked = s.allow_online_on_failure !== false;
     document.getElementById('includeIPv6').checked = !!s.include_ipv6;
     document.getElementById('launchAtLogin').checked = !!s.launch_at_login;
+    document.getElementById('runAsAdmin').checked = !!s.run_as_admin;
+    document.getElementById('elevationExplain').textContent =
+        s.elevation_explain ||
+        '管理员模式可长期静默更新 hosts（换 IP 时不再每次点授权）。普通模式更安全，但每次真正改 hosts 都需要点击授予权限。';
+    document.getElementById('elevationLabel').textContent = s.elevation_label || '';
+    document.getElementById('elevationPlatform').textContent = s.elevation_platform || '';
+    document.getElementById('elevationStatus').textContent =
+        (s.elevation_label || '—') + (s.run_as_admin ? '（偏好：管理员）' : '（偏好：普通用户）');
     const row = document.getElementById('autostartRow');
     if (s.autostart_supported === false) {
         row.hidden = true;
     } else {
         row.hidden = false;
     }
+    document.getElementById('adminRelaunchRow').hidden = !s.needs_admin_relaunch;
 }
 
 async function reload() {
@@ -134,19 +159,39 @@ document.getElementById('btnRefresh').addEventListener('click', async () => {
 });
 
 document.getElementById('btnSave').addEventListener('click', async () => {
+    const wantAdmin = document.getElementById('runAsAdmin').checked;
+    document.getElementById('saveNote').textContent = wantAdmin
+        ? '保存中…若需提权请在系统授权提示中确认。'
+        : '保存中…';
     const payload = {
         schedule_mode: document.getElementById('scheduleMode').value,
         interval_hours: Number(document.getElementById('intervalHours').value) || 24,
         allow_online_on_failure: document.getElementById('allowOnline').checked,
         include_ipv6: document.getElementById('includeIPv6').checked,
         launch_at_login: document.getElementById('launchAtLogin').checked,
+        run_as_admin: wantAdmin,
         workers: 32,
         timeout_ms: 800,
         repeat: 2,
         domains: ['translate.googleapis.com', 'translate-pa.googleapis.com'],
     };
-    const msg = await SaveSettings(payload);
-    document.getElementById('saveNote').textContent = msg;
+    try {
+        const msg = await SaveSettings(payload);
+        document.getElementById('saveNote').textContent = msg;
+    } catch (e) {
+        document.getElementById('saveNote').textContent = String(e);
+    }
+    await reload();
+});
+
+document.getElementById('btnRelaunchAdmin').addEventListener('click', async () => {
+    document.getElementById('saveNote').textContent = '请在系统授权提示中确认…';
+    try {
+        const msg = await RelaunchAsAdmin();
+        document.getElementById('saveNote').textContent = msg;
+    } catch (e) {
+        document.getElementById('saveNote').textContent = String(e);
+    }
     await reload();
 });
 

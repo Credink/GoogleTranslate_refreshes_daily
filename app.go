@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"GoogleTranslate_refreshes_daily/internal/autostart"
+	"GoogleTranslate_refreshes_daily/internal/elevate"
 	"GoogleTranslate_refreshes_daily/internal/schedule"
 	"GoogleTranslate_refreshes_daily/internal/state"
 	"GoogleTranslate_refreshes_daily/internal/tray"
@@ -51,6 +52,20 @@ func (a *App) startup(ctx context.Context) {
 	a.cfg = cfg
 	a.st = st
 	a.mu.Unlock()
+
+	// Preference is admin mode but this process is not elevated → UAC/pkexec relaunch once.
+	if cfg.RunAsAdmin && !elevate.IsElevated() {
+		log.Printf("app: run_as_admin set but not elevated; requesting elevated relaunch")
+		if err := elevate.RelaunchElevated(); err != nil {
+			log.Printf("app: elevated relaunch declined or failed: %v — continuing as normal user", err)
+		} else {
+			go func() {
+				time.Sleep(200 * time.Millisecond)
+				a.requestQuit()
+			}()
+			return
+		}
+	}
 
 	a.trayStop = tray.Start(tray.Hooks{
 		Icon:         a.trayIcon,
@@ -268,6 +283,12 @@ type SettingsDTO struct {
 	IncludeIPv6          bool     `json:"include_ipv6"`
 	LaunchAtLogin        bool     `json:"launch_at_login"`
 	AutostartSupported   bool     `json:"autostart_supported"`
+	RunAsAdmin           bool     `json:"run_as_admin"`
+	IsElevated           bool     `json:"is_elevated"`
+	NeedsAdminRelaunch   bool     `json:"needs_admin_relaunch"`
+	ElevationLabel       string   `json:"elevation_label"`
+	ElevationExplain     string   `json:"elevation_explain"`
+	ElevationPlatform    string   `json:"elevation_platform"`
 	Workers              int      `json:"workers"`
 	TimeoutMS            int      `json:"timeout_ms"`
 	Repeat               int      `json:"repeat"`
@@ -284,6 +305,7 @@ func (a *App) GetSettings() SettingsDTO {
 			a.cfg.LaunchAtLogin = enabled
 		}
 	}
+	elev := elevate.IsElevated()
 	return SettingsDTO{
 		ScheduleMode:         string(a.cfg.ScheduleMode),
 		IntervalHours:        a.cfg.IntervalHours,
@@ -291,6 +313,12 @@ func (a *App) GetSettings() SettingsDTO {
 		IncludeIPv6:          a.cfg.IncludeIPv6,
 		LaunchAtLogin:        launch,
 		AutostartSupported:   autostart.Supported(),
+		RunAsAdmin:           a.cfg.RunAsAdmin,
+		IsElevated:           elev,
+		NeedsAdminRelaunch:   a.cfg.RunAsAdmin && !elev,
+		ElevationLabel:       elevate.CurrentModeLabel(),
+		ElevationExplain:     elevate.ModeExplanation,
+		ElevationPlatform:    elevate.PlatformNotes(),
 		Workers:              a.cfg.Workers,
 		TimeoutMS:            a.cfg.TimeoutMS,
 		Repeat:               a.cfg.Repeat,
@@ -300,7 +328,7 @@ func (a *App) GetSettings() SettingsDTO {
 
 func (a *App) SaveSettings(s SettingsDTO) string {
 	a.mu.Lock()
-	defer a.mu.Unlock()
+	prevAdmin := a.cfg.RunAsAdmin
 	a.cfg.ScheduleMode = state.ScheduleMode(s.ScheduleMode)
 	if a.cfg.ScheduleMode == "" {
 		a.cfg.ScheduleMode = state.ModeDailyMidnight
@@ -309,13 +337,17 @@ func (a *App) SaveSettings(s SettingsDTO) string {
 	a.cfg.AllowOnlineOnFailure = s.AllowOnlineOnFailure
 	a.cfg.IncludeIPv6 = s.IncludeIPv6
 	a.cfg.LaunchAtLogin = s.LaunchAtLogin
+	a.cfg.RunAsAdmin = s.RunAsAdmin
 	a.cfg.Workers = s.Workers
 	a.cfg.TimeoutMS = s.TimeoutMS
 	a.cfg.Repeat = s.Repeat
 	if len(s.Domains) > 0 {
 		a.cfg.Domains = s.Domains
 	}
-	if err := state.SaveConfig(a.cfg); err != nil {
+	cfg := a.cfg
+	a.mu.Unlock()
+
+	if err := state.SaveConfig(cfg); err != nil {
 		return "保存失败: " + err.Error()
 	}
 	if autostart.Supported() {
@@ -323,7 +355,58 @@ func (a *App) SaveSettings(s SettingsDTO) string {
 			return "设置已保存，但开机自启更新失败: " + err.Error()
 		}
 	}
+
+	// Dual elevation mode transitions: persist first, then relaunch + quit.
+	if s.RunAsAdmin && !prevAdmin {
+		if elevate.IsElevated() {
+			return "设置已保存（已在管理员模式下运行）"
+		}
+		if err := elevate.RelaunchElevated(); err != nil {
+			return "设置已保存，但提权重启失败（可稍后点「立即以管理员身份重启」）: " + err.Error()
+		}
+		a.quitSoon()
+		return "设置已保存，正在以管理员身份重新启动…"
+	}
+	if !s.RunAsAdmin && prevAdmin {
+		if !elevate.IsElevated() {
+			return "设置已保存（当前为普通用户）"
+		}
+		if err := elevate.RelaunchUnelevated(); err != nil {
+			return "设置已保存。无法自动降权：" + err.Error()
+		}
+		a.quitSoon()
+		return "设置已保存，正在以普通用户重新启动…"
+	}
+	if s.RunAsAdmin && !elevate.IsElevated() {
+		return "设置已保存。偏好为管理员模式，但当前未提权 — 请点「立即以管理员身份重启」或重新打开本程序。"
+	}
 	return "设置已保存"
+}
+
+// RelaunchAsAdmin triggers an elevated relaunch when the user prefers admin mode
+// but the current process is still unelevated (e.g. UAC was cancelled at startup).
+func (a *App) RelaunchAsAdmin() string {
+	a.mu.Lock()
+	want := a.cfg.RunAsAdmin
+	a.mu.Unlock()
+	if elevate.IsElevated() {
+		return "当前已是管理员模式"
+	}
+	if !want {
+		return "请先勾选「以管理员身份运行」并保存"
+	}
+	if err := elevate.RelaunchElevated(); err != nil {
+		return "提权重启失败: " + err.Error()
+	}
+	a.quitSoon()
+	return "正在以管理员身份重新启动…"
+}
+
+func (a *App) quitSoon() {
+	go func() {
+		time.Sleep(400 * time.Millisecond)
+		a.requestQuit()
+	}()
 }
 
 func (a *App) RefreshNow() StatusDTO {
