@@ -7,7 +7,7 @@
 | 平台 | 做法 |
 |------|------|
 | **Windows** | 解压便携 zip 运行 `GoogleTranslateHostsUpdater.exe`，或运行 NSIS 安装包 |
-| **Linux (x86_64)** | 下载 **`.AppImage`**，`chmod +x` 后运行；需桌面环境（WebKitGTK）。**不是 DMG**（DMG 仅为 macOS） |
+| **Linux (x86_64)** | 下载 **`.AppImage`**，`chmod +x` 后**普通用户**运行（勿 sudo；发布包已捆绑 WebKit/GTK）。**不是 DMG**（DMG 仅为 macOS）；详见 [`packages/README.md`](../packages/README.md) |
 | **macOS (Apple Silicon)** | 打开 **`.dmg`**，拖到「应用程序」；首次若被拦截，在「系统设置 → 隐私与安全性」允许 |
 
 关闭窗口 = **隐藏到托盘**；托盘「退出程序」才真正结束。托盘可：立即刷新 / 打开设置 / 退出。
@@ -73,7 +73,7 @@
 2. 已正确则**不写盘**；仅缺失或 `ranslate` 等笔误才修补
 3. 界面圆形感叹号悬停可见中文说明；也可点「配置代理插件绕过」；未找到时会列出已扫描的浏览器目录
 
-限制：浏览器占用 LevelDB 时请先退出；写入后需重启浏览器；不覆盖非 Omega 类扩展。Linux/macOS 路径与手动步骤见 README「Hosts ≠ 代理路径」。
+限制：请先**完全退出** Chrome/Chromium/Brave/Edge（含托盘）再点「配置代理插件绕过」；写入后需重启浏览器；不覆盖非 Omega 类扩展。Win/macOS/Linux 扫描路径见根 README「Hosts ≠ 代理路径」。
 
 推荐心智模型：
 
