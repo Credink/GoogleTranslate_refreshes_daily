@@ -7,14 +7,14 @@ import "fmt"
 // Fallback used when screen metrics are unavailable.
 const (
 	FallbackWidth  = 540
-	FallbackHeight = 920
+	FallbackHeight = 980
 	AbsMinWidth    = 420
 	AbsMinHeight   = 640
 	AbsMaxWidth    = 960
 	AbsMaxHeight   = 1400
 	// Preferred content-fit size for the settings UI at 100% scale.
 	ContentWidth  = 540
-	ContentHeight = 920
+	ContentHeight = 980
 )
 
 // Size is a window geometry suggestion.

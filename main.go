@@ -75,7 +75,7 @@ func main() {
 	opts := &options.App{
 		Title:     "谷歌翻译 Hosts 更新器",
 		Width:     540,
-		Height:    920,
+		Height:    980,
 		MinWidth:  420,
 		MinHeight: 640,
 		AssetServer: &assetserver.Options{

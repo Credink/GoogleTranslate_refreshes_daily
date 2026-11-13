@@ -11,8 +11,12 @@ $BinDir = Join-Path $Root "build\bin"
 $DistDir = Join-Path $Root "build\dist"
 New-Item -ItemType Directory -Force -Path $BinDir, $DistDir | Out-Null
 
-Write-Host "==> wails build"
-wails build
+$commit = (git rev-parse --short HEAD 2>$null)
+if (-not $commit) { $commit = "unknown" }
+$built = Get-Date -Format "yyyy-MM-ddTHH:mm:ssK"
+$ld = "-X main.BuildCommit=$commit -X main.BuildTime=$built"
+Write-Host "==> wails build (commit=$commit)"
+wails build -ldflags $ld
 if ($LASTEXITCODE -ne 0) { throw "wails build failed" }
 
 $Exe = Join-Path $BinDir "GoogleTranslateHostsUpdater.exe"
