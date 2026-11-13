@@ -76,11 +76,51 @@ wails build -nsis
 
 配置目录：`%AppData%\GoogleTranslateHostsUpdater\`（`config.json` / `state.json`）。
 
+## 重要：Hosts ≠ 代理路径（ZeroOmega / 系统代理）
+
+改 hosts **只影响本机 DNS 解析**。若 Chrome 里开了 **ZeroOmega / SwitchyOmega**（或其它代理插件）把流量送去 `127.0.0.1:7890` 之类，请求**不会走 hosts 指向的优选 IP**，翻译仍可能失败——这是「解析对了、路径错了」。
+
+### 需要直连（DIRECT / bypass）的 5 个托管域名
+
+| 域名 | 用途 |
+|------|------|
+| `translate.googleapis.com` | API / 测速 |
+| `translate-pa.googleapis.com` | Chrome 网页翻译主调用 |
+| `jnn-pa.googleapis.com` | Chrome 内置翻译相关 |
+| `translate.google.com` | 网页入口 |
+| `translate.google.com.hk` | 网页入口 |
+
+在 ZeroOmega / SwitchyOmega 中任选其一：
+
+- **情景模式（auto switch）**：为上述域名添加规则 → **`direct`**（且放在 `*google*` / `*googleapis*` → proxy 之类宽规则**之前**）
+- **代理情景（FixedProfile，如走 7890）**：把上述域名加入 **bypassList**（绕过条件）
+
+其它代理扩展（Clash 浏览器插件、系统 PAC 等）需**自行**配置同样的 DIRECT/绕过；**本工具不声称覆盖所有代理扩展**。
+
+### 本工具的自动配置（best-effort）
+
+写入 hosts 成功后（以及首次检查、或设置里点「配置代理插件绕过」）会尝试：
+
+1. 扫描本机 Chrome / Edge 用户目录下的 **ZeroOmega / SwitchyOmega** `Local Extension Settings`（LevelDB）
+2. **先只读检查**：若托管域名已在 bypass/DIRECT 且无 `ranslate` 等笔误 → **不写盘**（幂等）
+3. 仅当缺失或笔误时才修补 FixedProfile bypass / SwitchProfile `direct` 规则
+4. 域名列表未变且上次已确认就绪时，自动流程会直接跳过（避免每次运行重复改写）；手动按钮仍会重新检查，但同样只在需要时写入
+5. 在界面显示结果；设置区有 **圆形感叹号**，悬停可见中文说明
+
+限制：
+
+- 浏览器正在运行时 LevelDB 可能锁住 → 请**完全退出**后再点「配置代理插件绕过」
+- 写入后需**重启浏览器**插件才会重载配置
+- 格式无法识别时跳过，不会强行改坏未知存储
+- **不能**自动配置非 Omega 类扩展
+
 ### 浏览器仍打不开翻译？
 
 1. **关闭浏览器「安全 DNS / Secure DNS / DoH」**（Chrome：设置 → 隐私和安全 → 使用安全 DNS；Edge 类似）。DoH **绕过**系统 hosts。  
-2. 默认写入同一优选 IP 到：`translate.googleapis.com`、`translate-pa.googleapis.com`、`jnn-pa.googleapis.com`、`translate.google.com`、`translate.google.com.hk`（设置里可改域名列表；可选开启地区 ccTLD 包）。探测仍只验证 API 节点。请收藏 **[translate.google.com](https://translate.google.com/)** 或 **[translate.google.com.hk](https://translate.google.com.hk/)**；`translate.google.cn` 只是跳板，不是可用翻译页。  
-3. 可手动管理员执行：`ipconfig /flushdns`，再用 `Resolve-DnsName translate.googleapis.com` 确认结果为 hosts 中的 IP。
+2. 确认代理插件已对上面 5 域 **DIRECT/bypass**（见上节）；宽规则 `*google*` / `*googleapis*` → proxy 会把翻译送进 7890。  
+3. 默认写入同一优选 IP 到上述 5 域（设置里可改；可选地区 ccTLD 包）。探测仍只验证 API。请收藏 **[translate.google.com](https://translate.google.com/)** 或 **[translate.google.com.hk](https://translate.google.com.hk/)**；`translate.google.cn` 只是跳板。  
+4. 管理员执行：`ipconfig /flushdns`；`Resolve-DnsName translate.googleapis.com` 应等于 hosts 中的 IP。Chrome：`chrome://net-internals/#dns` → Clear host cache。  
+5. 若 bypass 列表里误写成 `ranslate.…`，改回 `translate.…`（本工具重写时会尝试自动修正）。
 
 ### 开机自启动
 

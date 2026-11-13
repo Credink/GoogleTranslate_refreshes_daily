@@ -7,6 +7,7 @@ import {
     SaveSettings,
     RefreshNow,
     RelaunchAsAdmin,
+    ConfigureProxyBypass,
     TrayMenuLabels,
     GetBuildInfo,
 } from '../wailsjs/go/main/App';
@@ -66,6 +67,19 @@ app.innerHTML = `
       </label>
 
       <div class="domains-block">
+        <div class="section-title-row">
+          <h3 class="section-title">Hosts / 代理相关</h3>
+          <button
+            id="proxyHintIcon"
+            class="hint-icon"
+            type="button"
+            aria-label="代理插件提示"
+            title=""
+          >
+            <span class="hint-icon-ring" aria-hidden="true">!</span>
+          </button>
+        </div>
+        <p id="proxyHintTooltip" class="note proxy-hint" hidden></p>
         <label class="field">
           <span>托管域名（每行一个；同一优选 IP）</span>
           <textarea id="domainsList" rows="6" spellcheck="false"></textarea>
@@ -76,6 +90,10 @@ app.innerHTML = `
         </label>
         <p id="regionalHint" class="note"></p>
         <p id="effectiveHint" class="note"></p>
+        <p id="proxyBypassStatus" class="note"></p>
+        <div class="actions">
+          <button id="btnProxyBypass" class="btn" type="button">配置代理插件绕过</button>
+        </div>
       </div>
 
       <div class="elevation-block">
@@ -114,6 +132,22 @@ function fillStatus(s) {
     document.getElementById('trayLine').textContent = s.tray_line || '—';
     document.getElementById('busyNote').hidden = !s.busy;
     document.getElementById('btnRefresh').disabled = !!s.busy;
+
+    const tip =
+        s.proxy_bypass_tooltip ||
+        '本软件已尝试自动配置 ZeroOmega 等 Chrome 代理插件，将托管的翻译域名设为直连（DIRECT/绕过代理）。若翻译仍失败，请在代理插件中手动把这些域名设为 bypass/DIRECT。本功能无法覆盖全部代理扩展。';
+    const icon = document.getElementById('proxyHintIcon');
+    icon.title = tip;
+    icon.setAttribute('aria-label', tip);
+    document.getElementById('proxyHintTooltip').textContent = tip;
+
+    const bypassBits = [];
+    if (s.proxy_bypass_status) bypassBits.push(`状态: ${s.proxy_bypass_status}`);
+    if (s.proxy_bypass_at) bypassBits.push(`时间: ${s.proxy_bypass_at}`);
+    if (s.proxy_bypass_message) bypassBits.push(s.proxy_bypass_message);
+    document.getElementById('proxyBypassStatus').textContent = bypassBits.length
+        ? `代理插件自动配置 — ${bypassBits.join('；')}`
+        : '代理插件自动配置 — 尚未执行（写入 hosts 后会尝试；也可点下方按钮）';
 }
 
 function fillSettings(s) {
@@ -224,6 +258,31 @@ document.getElementById('btnRelaunchAdmin').addEventListener('click', async () =
         document.getElementById('saveNote').textContent = String(e);
     }
     await reload();
+});
+
+const proxyHintIcon = document.getElementById('proxyHintIcon');
+const proxyHintTooltip = document.getElementById('proxyHintTooltip');
+proxyHintIcon.addEventListener('mouseenter', () => {
+    proxyHintTooltip.hidden = false;
+});
+proxyHintIcon.addEventListener('mouseleave', () => {
+    proxyHintTooltip.hidden = true;
+});
+proxyHintIcon.addEventListener('focus', () => {
+    proxyHintTooltip.hidden = false;
+});
+proxyHintIcon.addEventListener('blur', () => {
+    proxyHintTooltip.hidden = true;
+});
+
+document.getElementById('btnProxyBypass').addEventListener('click', async () => {
+    document.getElementById('proxyBypassStatus').textContent = '正在配置代理插件绕过…（若浏览器正在运行可能失败）';
+    try {
+        const s = await ConfigureProxyBypass();
+        fillStatus(s);
+    } catch (e) {
+        document.getElementById('proxyBypassStatus').textContent = String(e);
+    }
 });
 
 reload().catch(console.error);

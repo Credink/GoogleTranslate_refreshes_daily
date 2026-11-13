@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"GoogleTranslate_refreshes_daily/internal/autostart"
+	"GoogleTranslate_refreshes_daily/internal/chromeproxy"
 	"GoogleTranslate_refreshes_daily/internal/elevate"
 	"GoogleTranslate_refreshes_daily/internal/hostsfile"
 	"GoogleTranslate_refreshes_daily/internal/schedule"
@@ -255,6 +256,11 @@ type StatusDTO struct {
 	Busy        bool   `json:"busy"`
 	TrayLine    string `json:"tray_line"`
 	NextRunAt   string `json:"next_run_at"`
+
+	ProxyBypassAt      string `json:"proxy_bypass_at"`
+	ProxyBypassStatus  string `json:"proxy_bypass_status"`
+	ProxyBypassMessage string `json:"proxy_bypass_message"`
+	ProxyBypassTooltip string `json:"proxy_bypass_tooltip"`
 }
 
 func (a *App) GetStatus() StatusDTO {
@@ -265,15 +271,23 @@ func (a *App) GetStatus() StatusDTO {
 		checkAt = a.st.LastCheckAt.Local().Format("2006-01-02 15:04:05")
 	}
 	next := schedule.NextRun(time.Now(), a.cfg).Local().Format("2006-01-02 15:04:05")
+	bypassAt := ""
+	if !a.st.ProxyBypassAt.IsZero() {
+		bypassAt = a.st.ProxyBypassAt.Local().Format("2006-01-02 15:04:05")
+	}
 	return StatusDTO{
-		LastCheckAt: checkAt,
-		LastStatus:  string(a.st.LastStatus),
-		LastMessage: a.st.LastMessage,
-		LastIP:      a.st.LastIP,
-		LastLatency: a.st.LastLatency,
-		Busy:        a.busy,
-		TrayLine:    tray.StatusLine(a.st.LastMessage, checkAt),
-		NextRunAt:   next,
+		LastCheckAt:        checkAt,
+		LastStatus:         string(a.st.LastStatus),
+		LastMessage:        a.st.LastMessage,
+		LastIP:             a.st.LastIP,
+		LastLatency:        a.st.LastLatency,
+		Busy:               a.busy,
+		TrayLine:           tray.StatusLine(a.st.LastMessage, checkAt),
+		NextRunAt:          next,
+		ProxyBypassAt:      bypassAt,
+		ProxyBypassStatus:  a.st.ProxyBypassStatus,
+		ProxyBypassMessage: a.st.ProxyBypassMessage,
+		ProxyBypassTooltip: chromeproxy.TooltipZH,
 	}
 }
 
@@ -423,6 +437,34 @@ func (a *App) RefreshNow() StatusDTO {
 	a.runRefresh(true)
 	a.pushTrayStatus()
 	return a.GetStatus()
+}
+
+// ConfigureProxyBypass manually re-checks ZeroOmega/SwitchyOmega DIRECT/bypass rules
+// for the current effective managed domains. Still idempotent: writes only if missing/typo.
+// Best-effort; not all proxy extensions covered.
+func (a *App) ConfigureProxyBypass() StatusDTO {
+	a.mu.Lock()
+	cfg := a.cfg
+	a.mu.Unlock()
+	domains := state.EffectiveDomains(cfg)
+	pr := chromeproxy.ConfigureBypassOpts(domains, chromeproxy.Options{Force: true})
+	a.mu.Lock()
+	a.st.ProxyBypassTried = true
+	a.st.ProxyBypassAt = pr.At
+	a.st.ProxyBypassStatus = pr.Status
+	a.st.ProxyBypassMessage = pr.Message
+	if pr.DomainsKey != "" {
+		a.st.ProxyBypassDomainsKey = pr.DomainsKey
+	}
+	st := a.st
+	a.mu.Unlock()
+	_ = state.SaveState(st)
+	return a.GetStatus()
+}
+
+// ProxyBypassTooltip returns the Chinese hint for the hosts/proxy warning icon.
+func (a *App) ProxyBypassTooltip() string {
+	return chromeproxy.TooltipZH
 }
 
 func (a *App) TrayMenuLabels() map[string]string {

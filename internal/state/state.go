@@ -92,6 +92,13 @@ type State struct {
 	LastIP      string            `json:"last_ip"`
 	LastLatency string            `json:"last_latency,omitempty"`
 	LastIPs     map[string]string `json:"last_ips,omitempty"`
+
+	// Best-effort ZeroOmega / SwitchyOmega bypass auto-config (chrome.storage LevelDB).
+	ProxyBypassAt         time.Time `json:"proxy_bypass_at,omitempty"`
+	ProxyBypassStatus     string    `json:"proxy_bypass_status,omitempty"`
+	ProxyBypassMessage    string    `json:"proxy_bypass_message,omitempty"`
+	ProxyBypassTried      bool      `json:"proxy_bypass_tried,omitempty"`
+	ProxyBypassDomainsKey string    `json:"proxy_bypass_domains_key,omitempty"` // fingerprint; skip auto rewrite when unchanged + OK
 }
 
 func Dir() (string, error) {

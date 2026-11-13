@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"GoogleTranslate_refreshes_daily/internal/chromeproxy"
 	"GoogleTranslate_refreshes_daily/internal/discover"
 	"GoogleTranslate_refreshes_daily/internal/dnsflush"
 	"GoogleTranslate_refreshes_daily/internal/elevate"
@@ -67,6 +69,10 @@ func Refresh(ctx context.Context, cfg state.Config, st state.State) (Report, sta
 				rep.Latency = lat.Round(time.Millisecond).String()
 				rep.Message = fmt.Sprintf("当前 hosts IP %s 可用 (%s)，无需更新", cur, rep.Latency)
 				st.LastIP = cur
+				// First-run / never-tried: still attempt Omega bypass config once.
+				if !st.ProxyBypassTried {
+					st = applyProxyBypass(st, state.EffectiveDomains(cfg), &rep)
+				}
 				st = persist(st, rep)
 				return rep, st
 			}
@@ -160,8 +166,34 @@ func Refresh(ctx context.Context, cfg state.Config, st state.State) (Report, sta
 	for _, d := range domains {
 		st.LastIPs[d] = best
 	}
+	// After hosts write: auto-configure ZeroOmega/SwitchyOmega DIRECT/bypass (best-effort).
+	st = applyProxyBypass(st, domains, &rep)
 	st = persist(st, rep)
 	return rep, st
+}
+
+// applyProxyBypass patches Omega chrome.storage LevelDB and records status on st/rep.
+// Automatic path is idempotent: if last status was OK for the same domain set, skip
+// entirely; otherwise read LevelDB and write only when bypass/DIRECT is missing or typo'd.
+func applyProxyBypass(st state.State, domains []string, rep *Report) state.State {
+	pr := chromeproxy.ConfigureBypassOpts(domains, chromeproxy.Options{
+		Force:            false,
+		PriorOK:          st.ProxyBypassStatus == chromeproxy.StatusOK,
+		SkipIfDomainsKey: st.ProxyBypassDomainsKey,
+	})
+	st.ProxyBypassTried = true
+	st.ProxyBypassAt = pr.At
+	st.ProxyBypassStatus = pr.Status
+	st.ProxyBypassMessage = pr.Message
+	if pr.DomainsKey != "" {
+		st.ProxyBypassDomainsKey = pr.DomainsKey
+	}
+	if pr.Message != "" && !pr.SkippedAuto {
+		rep.Message = strings.TrimSpace(rep.Message + "；代理插件: " + pr.Message)
+	} else if pr.SkippedAuto {
+		// Keep hosts message clean on routine runs; status still stored.
+	}
+	return st
 }
 
 func findBest(ctx context.Context, scanCfg probe.Config, opt discover.PoolOptions) (best string, lat time.Duration, failed int, err error) {

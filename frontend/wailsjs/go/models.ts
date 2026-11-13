@@ -57,6 +57,10 @@ export namespace main {
 	    busy: boolean;
 	    tray_line: string;
 	    next_run_at: string;
+	    proxy_bypass_at: string;
+	    proxy_bypass_status: string;
+	    proxy_bypass_message: string;
+	    proxy_bypass_tooltip: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new StatusDTO(source);
@@ -72,6 +76,10 @@ export namespace main {
 	        this.busy = source["busy"];
 	        this.tray_line = source["tray_line"];
 	        this.next_run_at = source["next_run_at"];
+	        this.proxy_bypass_at = source["proxy_bypass_at"];
+	        this.proxy_bypass_status = source["proxy_bypass_status"];
+	        this.proxy_bypass_message = source["proxy_bypass_message"];
+	        this.proxy_bypass_tooltip = source["proxy_bypass_tooltip"];
 	    }
 	}
 

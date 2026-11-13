@@ -12,6 +12,7 @@
 6. **Windows 开机自启：** HKCU Run 值 `GoogleTranslateHostsUpdater`；设置页 `launch_at_login`；卸载时清除
 7. **macOS 托盘：** 仅做 build-tag / 模板图标 / 代码路径对齐；**无 Mac 硬件时不做完整 GUI 托盘验收**（见 `build/darwin/README.md`）
 8. **双权限模式：** 默认普通用户（按次 `--apply-hosts` 提权）；可选 `run_as_admin` 长期提权静默写 hosts。开启/关闭会尝试 relaunch；Windows 完整实现，macOS/Linux best-effort（降权常需手动）
+9. **代理插件 bypass（best-effort，幂等）：** 写入 hosts 后 / 首次检查 / GUI「配置代理插件绕过」会扫描 Chrome/Edge 的 ZeroOmega、SwitchyOmega LevelDB。**先检查是否已在 bypass/DIRECT**；已正确则跳过写入。仅缺失或 `ranslate` 等笔误时才修补。同域名集且上次已 OK 时自动流程不再重复改写。**不声称覆盖全部代理扩展**。详见 README「Hosts ≠ 代理路径」。
 
 ## 探测摘要
 
@@ -41,4 +42,4 @@ powershell -ExecutionPolicy Bypass -File .\scripts\package-windows.ps1
 
 ## 后续
 
-CIDR 深扫 UI、macOS 真机托盘验收与公证/DMG、Linux 托盘打磨。
+CIDR 深扫 UI、macOS 真机托盘验收与公证/DMG、Linux 托盘打磨；更多代理扩展的手动配置文档（仍不承诺自动覆盖）。

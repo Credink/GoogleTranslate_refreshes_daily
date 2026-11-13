@@ -148,6 +148,59 @@ dd {
   background: rgba(255, 255, 255, 0.55);
 }
 
+.section-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.section-title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.hint-icon {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: help;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hint-icon-ring {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid #b45309;
+  color: #b45309;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  display: inline-block;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.hint-icon:hover .hint-icon-ring,
+.hint-icon:focus .hint-icon-ring {
+  background: rgba(180, 83, 9, 0.12);
+}
+
+.proxy-hint {
+  color: #7c4a03;
+  background: rgba(251, 191, 36, 0.14);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 0 0 10px;
+}
+
 .domains-block textarea {
   font: inherit;
   font-family: Consolas, "Cascadia Mono", "Sarasa Mono SC", monospace;
