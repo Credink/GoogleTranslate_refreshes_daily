@@ -18,7 +18,7 @@
 
 - URL：`https://{ip}/translate_a/element.js`，SNI/`Host` = `translate.googleapis.com`
 - 当前 IP 仍可用 → 不写 hosts、不拉远程列表
-- 调度：默认本地午夜；错过则启动补跑（只做可用性检查）
+- 调度：默认**软件启动时刷新**；可选每天本地午夜或按小时间隔（午夜/间隔错过则启动补跑；只做可用性检查）
 
 ## 安装 / 自启（Windows）
 

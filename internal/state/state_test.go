@@ -9,6 +9,13 @@ import (
 	"GoogleTranslate_refreshes_daily/internal/hostsfile"
 )
 
+func TestDefaultConfigScheduleOnAppStart(t *testing.T) {
+	c := DefaultConfig()
+	if c.ScheduleMode != ModeOnAppStart {
+		t.Fatalf("factory ScheduleMode want %q, got %q", ModeOnAppStart, c.ScheduleMode)
+	}
+}
+
 func TestEffectiveDomainsRegionalOff(t *testing.T) {
 	c := DefaultConfig()
 	got := EffectiveDomains(c)

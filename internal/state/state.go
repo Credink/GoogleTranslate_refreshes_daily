@@ -16,6 +16,7 @@ const appDirName = "GoogleTranslateHostsUpdater"
 type ScheduleMode string
 
 const (
+	ModeOnAppStart    ScheduleMode = "on_app_start" // 软件启动时刷新（出厂默认）
 	ModeDailyMidnight ScheduleMode = "daily_midnight"
 	ModeIntervalHours ScheduleMode = "interval_hours"
 )
@@ -36,7 +37,7 @@ type Config struct {
 
 func DefaultConfig() Config {
 	return Config{
-		ScheduleMode:         ModeDailyMidnight,
+		ScheduleMode:         ModeOnAppStart,
 		IntervalHours:        24,
 		AllowOnlineOnFailure: true,
 		IncludeIPv6:          false,

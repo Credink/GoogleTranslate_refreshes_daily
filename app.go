@@ -107,7 +107,7 @@ func (a *App) startup(ctx context.Context) {
 		_ = autostart.Enable()
 	}
 
-	if schedule.NeedsCheck(time.Now(), cfg, st) {
+	if schedule.ShouldCheckOnStartup(time.Now(), cfg, st) {
 		go func() {
 			a.runRefresh(false)
 			a.pushTrayStatus()
@@ -284,7 +284,10 @@ func (a *App) GetStatus() StatusDTO {
 	if !a.st.LastCheckAt.IsZero() {
 		checkAt = a.st.LastCheckAt.Local().Format("2006-01-02 15:04:05")
 	}
-	next := schedule.NextRun(time.Now(), a.cfg).Local().Format("2006-01-02 15:04:05")
+	next := "下次软件启动时"
+	if a.cfg.ScheduleMode != state.ModeOnAppStart {
+		next = schedule.NextRun(time.Now(), a.cfg).Local().Format("2006-01-02 15:04:05")
+	}
 	bypassAt := ""
 	if !a.st.ProxyBypassAt.IsZero() {
 		bypassAt = a.st.ProxyBypassAt.Local().Format("2006-01-02 15:04:05")
@@ -366,7 +369,7 @@ func (a *App) SaveSettings(s SettingsDTO) string {
 	prevAdmin := a.cfg.RunAsAdmin
 	a.cfg.ScheduleMode = state.ScheduleMode(s.ScheduleMode)
 	if a.cfg.ScheduleMode == "" {
-		a.cfg.ScheduleMode = state.ModeDailyMidnight
+		a.cfg.ScheduleMode = state.ModeOnAppStart
 	}
 	a.cfg.IntervalHours = s.IntervalHours
 	a.cfg.AllowOnlineOnFailure = s.AllowOnlineOnFailure

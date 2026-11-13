@@ -45,7 +45,8 @@ app.innerHTML = `
       <label class="field">
         <span>检查频率</span>
         <select id="scheduleMode">
-          <option value="daily_midnight">每天本地午夜一次（默认）</option>
+          <option value="on_app_start">软件启动时刷新（默认）</option>
+          <option value="daily_midnight">每天本地午夜一次</option>
           <option value="interval_hours">按小时间隔</option>
         </select>
       </label>
@@ -151,7 +152,7 @@ function fillStatus(s) {
 }
 
 function fillSettings(s) {
-    document.getElementById('scheduleMode').value = s.schedule_mode || 'daily_midnight';
+    document.getElementById('scheduleMode').value = s.schedule_mode || 'on_app_start';
     document.getElementById('intervalHours').value = s.interval_hours || 24;
     document.getElementById('allowOnline').checked = s.allow_online_on_failure !== false;
     document.getElementById('includeIPv6').checked = !!s.include_ipv6;

@@ -9,6 +9,7 @@
 
 | 项 | 默认 |
 |----|------|
+| 检查频率 | **软件启动时刷新**（`on_app_start`）；可选每天本地午夜 / 按小时间隔 |
 | Hosts 域名 | 默认 5 条：API×2 + `jnn-pa` + `.com` + `.com.hk`；可选地区 ccTLD 包（默认关） |
 | 在线 IP 库 | **不定时**；仅当前 IP 探测失败且允许时拉取 |
 | IPv6 | **关**；开启后先测本机 IPv6，不可用则本轮 IPv4；双栈优先 IPv4 |
@@ -21,7 +22,7 @@ IP 探测思路参考 [GoogleTranslate_IPFinder](https://github.com/GoodCoder666
 ## 快速流程
 
 1. 安装并运行（见下）→ 可选开机自启 / 管理员模式  
-2. 「立即刷新」或等午夜计划 → 失效才换 IP，写入默认 5 域 + flushdns  
+2. 「立即刷新」或等计划检查（默认：软件启动时；可选午夜/间隔）→ 失效才换 IP，写入默认 5 域 + flushdns  
 3. Chrome：**关闭安全 DNS(DoH)**；ZeroOmega 等对 5 域 **DIRECT**（工具可幂等自动配置）  
 4. 海外原文页走 Socks5（如 `127.0.0.1:7890`）；**翻译域名走 DIRECT / hosts**  
 5. 验证：系统 DNS = hosts IP；必要时 `chrome://net-internals/#dns` 清缓存  
