@@ -149,14 +149,39 @@ jobs:
         with:
           path: release-assets
           merge-multiple: true
-      - name: Flatten assets
+      - name: Flatten assets (one per platform)
         run: |
+          # Canonical Release set: 1 Windows portable zip, 1 macOS DMG, 1 Linux AppImage
+          # (+ optional NSIS installer). Do NOT upload tar.gz leftovers or duplicate stamps.
           mkdir -p dist
-          find release-assets -type f \( \
-            -name '*.zip' -o -name '*.tar.gz' -o -name '*.dmg' -o -name '*.AppImage' -o -name '*installer*.exe' \
-          \) -print -exec cp -n {} dist/ \;
+          pick_latest() {
+            local pattern="$1"
+            local dest="$2"
+            local f
+            f="$(find release-assets -type f -name "$pattern" -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -n1 | cut -d' ' -f2-)"
+            if [[ -n "$f" ]]; then
+              echo "pick: $f -> $dest/"
+              cp -f "$f" "$dest/"
+            else
+              echo "missing pattern: $pattern" >&2
+            fi
+          }
+          pick_latest '*-windows-amd64-*-portable.zip' dist
+          pick_latest '*-darwin-*.dmg' dist
+          pick_latest '*-linux-amd64-*.AppImage' dist
+          # Optional installer (at most one)
+          pick_latest '*installer*.exe' dist || true
           ls -la dist
           test -n "$(ls -A dist 2>/dev/null)" || { echo "no release assets"; exit 1; }
+          # Fail if any platform somehow still has >1 file of the same kind
+          for kind in '*-portable.zip' '*.dmg' '*.AppImage'; do
+            n="$(find dist -maxdepth 1 -type f -name "$kind" | wc -l | tr -d ' ')"
+            if [[ "$n" -gt 1 ]]; then
+              echo "expected at most 1 $kind in dist, found $n:" >&2
+              find dist -maxdepth 1 -type f -name "$kind" >&2
+              exit 1
+            fi
+          done
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -183,8 +208,20 @@ jobs:
           - macOS：未公证；首次打开可能需「仍要打开」
           - Linux AppImage：\`chmod +x\` 后**普通用户**运行；已捆绑 WebKit（仍需 glibc/显示服务/GPU/字体/\`pkexec\`）
           - 使用说明：\`docs/user-flow.md\` / README / \`packages/README.md\`"
+          # Timestamped filenames defeat --clobber on re-runs; purge prior package
+          # assets first so each Release stays at one file per platform.
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
+            mapfile -t OLD < <(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+            for name in "${OLD[@]}"; do
+              case "$name" in
+                *-portable.zip|*.dmg|*.AppImage|*installer*.exe|*.tar.gz|*-darwin-*.zip)
+                  echo "delete-asset: $name"
+                  gh release delete-asset "$TAG" "$name" --repo "$GITHUB_REPOSITORY" --yes
+                  ;;
+              esac
+            done
+            gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY"
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes "$NOTES"
           else
             gh release create "$TAG" dist/* \
               --repo "$GITHUB_REPOSITORY" \
