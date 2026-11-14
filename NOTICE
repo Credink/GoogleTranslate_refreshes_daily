@@ -4,15 +4,31 @@ Third-party acknowledgements
 This product is licensed under the Apache License, Version 2.0.
 See the LICENSE file.
 
-IP discovery / availability-check approach
-------------------------------------------
-Inspired by GoodCoder666/GoogleTranslate_IPFinder
-  https://github.com/GoodCoder666/GoogleTranslate_IPFinder
-  License: GPL-3.0-or-later
+GoogleTranslate_IPFinder (inspiration only)
+-------------------------------------------
+Project: GoodCoder666/GoogleTranslate_IPFinder
+Author: GoodCoder666
+URL: https://github.com/GoodCoder666/GoogleTranslate_IPFinder
+License: GPL-3.0-or-later
 
-This repository does NOT include or vendor that project's source code.
-Probe concurrency, HTTPS template (`/translate_a/element.js`), SNI/Host usage,
-repeat/timeout defaults, and public IP-list URLs were reimplemented in original Go.
+This product was inspired by that project's approach to finding and speed-testing
+Google Translate API server IPs. Specifically inspired (idea / convention level):
+
+  - HTTPS availability probe via `/translate_a/element.js` with SNI/Host
+  - Concurrent pool speed-testing to pick a low-latency IP
+  - Use of public IP candidate lists (including GoodCoder666/gtdb URLs)
+
+This repository does NOT include, copy, or vendor GoogleTranslate_IPFinder source
+code. Probe concurrency, HTTPS template, SNI/Host usage, timeouts/repeats, and
+IP-list fetching were reimplemented in original Go under Apache-2.0.
+
+Original to this product (not from IPFinder):
+
+  - Wails v2 desktop GUI and settings UI
+  - Conditional system hosts updater (refresh only when current mapping fails)
+  - System tray, schedules, elevation / pkexec flows
+  - Cross-platform packaging (portable zip / DMG / AppImage)
+  - Proxy-extension bypass helpers and related product behavior
 
 IP candidate data
 -----------------

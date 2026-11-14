@@ -17,7 +17,16 @@
 | 权限模式 | **默认普通用户**；写 hosts 时按次提权。可选「以管理员身份运行」（Win/macOS）；Linux 始终普通用户 + `pkexec` |
 | 许可 | Apache-2.0（`LICENSE` + `NOTICE`） |
 
-IP 探测思路参考 [GoogleTranslate_IPFinder](https://github.com/GoodCoder666/GoogleTranslate_IPFinder)（**不复制其 GPL 源码**）。
+## 致谢 / 灵感来源
+
+IP 探测与测速思路、公开 IP 列表用法受 [GoodCoder666/GoogleTranslate_IPFinder](https://github.com/GoodCoder666/GoogleTranslate_IPFinder)（作者 [GoodCoder666](https://github.com/GoodCoder666)，GPL-3.0）启发；相关逻辑已用 Go **独立重写**，**不复制、不引入其 GPL 源码**。详见 [`NOTICE`](NOTICE)。
+
+| 借鉴自 IPFinder（思路 / 约定，非源码） | 本仓库原创 |
+|----------------------------------------|------------|
+| HTTPS 探测模板（`/translate_a/element.js`）、SNI/`Host` | Wails 桌面 GUI 与设置页 |
+| 并发测速选优 | 仅在当前 hosts IP **失效时**才拉库换 IP 并写 hosts |
+| 公开 IP 库用法（如 [gtdb](https://github.com/GoodCoder666/gtdb) 列表 URL） | 系统托盘、计划检查、跨平台提权 |
+| | 发布打包（portable zip / DMG / AppImage）、代理插件 bypass 等 |
 
 ## 安装（最终产物在 `packages/`）
 
